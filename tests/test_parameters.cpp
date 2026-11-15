@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+using namespace heptachord;
+
 TEST_CASE ("Golden File stimmt mit der Tabelle ueberein", "[params]")
 {
     const std::string path = std::string (HEPTACHORD_SOURCE_DIR) + "/tests/parameter_ids.txt";

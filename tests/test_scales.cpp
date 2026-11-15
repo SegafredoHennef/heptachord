@@ -51,7 +51,8 @@ TEST_CASE ("Rastung", "[scales]")
     REQUIRE (snapToScale (62, Scale::Dur) == 62);
     REQUIRE (snapToScale (61, Scale::Dur) == 60);   // Gleichstand -> tieferer Ton
     REQUIRE (snapToScale (61, Scale::Lydisch) == 60);
-    REQUIRE (snapToScale (63, Scale::Dur) == 64);
+    REQUIRE (snapToScale (63, Scale::Dur) == 62);   // ebenfalls Gleichstand 62/64
+    REQUIRE (snapToScale (64, Scale::Dur) == 64);
     REQUIRE (snapToScale (0, Scale::Dur) == 0);
     REQUIRE (snapToScale (127, Scale::Dur) == 127);
 }

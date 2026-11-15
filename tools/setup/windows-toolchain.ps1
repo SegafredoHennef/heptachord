@@ -1,130 +1,161 @@
-<#
-.SYNOPSIS
-    Richtet die Windows-Build-Toolchain für Heptachord ein.
-
-.DESCRIPTION
-    Installiert Git, CMake, Ninja und die C++-Workload der Visual Studio Build
-    Tools 2026 (MSVC v143 + Windows SDK). Idempotent: bereits vorhandene
-    Komponenten werden übersprungen.
-
-    Das Skript muss ERHÖHT (Administrator) laufen, weil die C++-Workload
-    maschinenweit installiert wird. Download ca. 3 GB, Dauer 5–20 Minuten.
-
-.EXAMPLE
-    powershell -ExecutionPolicy Bypass -File tools\setup\windows-toolchain.ps1
-#>
+# Heptachord - Windows-Build-Toolchain
+#
+# Ausfuehren (normale Shell, KEIN Admin noetig):
+#   powershell -ExecutionPolicy Bypass -File tools\setup\windows-toolchain.ps1
+#
+# Das Skript startet sich selbst mit Adminrechten neu (UAC-Bestaetigung).
+# Es installiert nur, was fehlt: Git, CMake, Ninja, C++-Workload (MSVC + SDK).
+# Reines ASCII: laeuft auch mit Windows PowerShell 5.1 ohne Encoding-Tricks.
 
 $ErrorActionPreference = 'Stop'
 
-function Test-Admin {
-    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
-    (New-Object Security.Principal.WindowsPrincipal $id).IsInRole(
-        [Security.Principal.WindowsBuiltInRole]::Administrator)
+function Test-IsAdmin {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Write-Step($n, $total, $text) {
-    Write-Host ""
-    Write-Host "[$n/$total] $text" -ForegroundColor Cyan
+if (-not (Test-IsAdmin)) {
+    Write-Host "Starte mit Administratorrechten neu - bitte die UAC-Abfrage bestaetigen." -ForegroundColor Yellow
+    $arguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', ('"{0}"' -f $PSCommandPath)
+    )
+    Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -Verb RunAs
+    exit 0
 }
 
-if (-not (Test-Admin)) {
-    Write-Host "Dieses Skript braucht Administratorrechte." -ForegroundColor Yellow
-    Write-Host "Rechtsklick auf PowerShell > 'Als Administrator ausführen', dann erneut:"
-    Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    exit 1
+$Total = 5
+
+function Write-Step {
+    param([int]$Number, [string]$Text)
+    Write-Host ''
+    Write-Host ('[{0}/{1}] {2}' -f $Number, $Total, $Text) -ForegroundColor Cyan
 }
 
-$steps = 5
-Write-Host "Heptachord — Build-Toolchain" -ForegroundColor Green
-Write-Host "Dieses Skript installiert Git, CMake, Ninja und MSVC (C++)."
+function Get-WingetPath {
+    $command = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    return $null
+}
 
-Write-Step 1 $steps "Git"
-if (Get-Command git -ErrorAction SilentlyContinue) {
-    Write-Host "  vorhanden: $((git --version))"
+function Install-WingetPackage {
+    param([string]$Id, [string]$DisplayName, [string]$Winget)
+
+    Write-Host ('  installiere {0} ...' -f $DisplayName)
+    $wingetArgs = @(
+        'install', '--id', $Id, '-e', '--source', 'winget', '--silent',
+        '--disable-interactivity',
+        '--accept-package-agreements', '--accept-source-agreements'
+    )
+    & $Winget @wingetArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw ('{0}: winget endete mit Code {1}' -f $DisplayName, $LASTEXITCODE)
+    }
+}
+
+Write-Host 'Heptachord - Build-Toolchain' -ForegroundColor Green
+
+$winget = Get-WingetPath
+if (-not $winget) {
+    throw 'winget.exe nicht gefunden. Bitte "App Installer" aus dem Microsoft Store installieren.'
+}
+
+# --- 1/5 Git ---------------------------------------------------------------
+Write-Step 1 'Git'
+if (Get-Command git.exe -ErrorAction SilentlyContinue) {
+    Write-Host ('  vorhanden: {0}' -f ((git --version) -join ' '))
 } else {
-    Write-Host "  installiere Git ..."
-    winget install --id Git.Git -e --source winget --silent `
-        --accept-package-agreements --accept-source-agreements
+    Install-WingetPackage -Id 'Git.Git' -DisplayName 'Git' -Winget $winget
 }
 
-Write-Step 2 $steps "CMake"
-if (Get-Command cmake -ErrorAction SilentlyContinue) {
-    Write-Host "  vorhanden: $((cmake --version)[0])"
+# --- 2/5 CMake -------------------------------------------------------------
+Write-Step 2 'CMake'
+if (Get-Command cmake.exe -ErrorAction SilentlyContinue) {
+    Write-Host ('  vorhanden: {0}' -f ((cmake --version) | Select-Object -First 1))
 } else {
-    Write-Host "  installiere CMake ..."
-    winget install --id Kitware.CMake -e --source winget --silent `
-        --accept-package-agreements --accept-source-agreements
+    Install-WingetPackage -Id 'Kitware.CMake' -DisplayName 'CMake' -Winget $winget
 }
 
-Write-Step 3 $steps "Ninja"
-if (Get-Command ninja -ErrorAction SilentlyContinue) {
-    Write-Host "  vorhanden: $((ninja --version))"
+# --- 3/5 Ninja -------------------------------------------------------------
+Write-Step 3 'Ninja'
+if (Get-Command ninja.exe -ErrorAction SilentlyContinue) {
+    Write-Host ('  vorhanden: {0}' -f (ninja --version))
 } else {
-    Write-Host "  installiere Ninja ..."
-    winget install --id Ninja-build.Ninja -e --source winget --silent `
-        --accept-package-agreements --accept-source-agreements
+    Install-WingetPackage -Id 'Ninja-build.Ninja' -DisplayName 'Ninja' -Winget $winget
 }
 
-Write-Step 4 $steps "C++-Workload der Build Tools 2026 (MSVC v143 + Windows SDK)"
-$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+# --- 4/5 C++-Workload ------------------------------------------------------
+Write-Step 4 'C++-Workload (MSVC + Windows SDK)'
+
+$installerRoot = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer'
+$vswhere = Join-Path $installerRoot 'vswhere.exe'
 if (-not (Test-Path $vswhere)) {
-    throw "vswhere.exe fehlt — bitte 'Visual Studio Installer' installieren."
+    throw 'vswhere.exe fehlt. Bitte "Microsoft Visual Studio Installer" installieren.'
 }
 
-$cl = & $vswhere -latest -products * `
-    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-    -find 'VC\Tools\MSVC\*\bin\Hostx64\x64\cl.exe' 2>$null | Select-Object -First 1
+function Find-Compiler {
+    $hits = & $vswhere -latest -products * `
+        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+        -find 'VC\Tools\MSVC\*\bin\Hostx64\x64\cl.exe' 2>$null
+    if ($hits) { return ($hits | Select-Object -First 1) }
+    return $null
+}
 
-if ($cl) {
-    Write-Host "  vorhanden: $cl"
+$compiler = Find-Compiler
+if ($compiler) {
+    Write-Host ('  vorhanden: {0}' -f $compiler)
 } else {
-    $setup = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\setup.exe'
-    $instances = & $vswhere -products * -format json | ConvertFrom-Json
+    $instances = & $vswhere -products * -format json 2>$null | ConvertFrom-Json
     $target = $instances | Where-Object { $_.installationPath } | Select-Object -First 1
     if (-not $target) {
-        throw "Keine Visual-Studio-Instanz gefunden. Bitte 'Build Tools für Visual Studio 2026' installieren."
+        throw 'Keine Visual-Studio-Instanz gefunden. Bitte "Visual Studio Build Tools" installieren.'
     }
-    Write-Host "  ergänze Workload in $($target.installationPath) ..."
-    Write-Host "  (Download ca. 3 GB — das dauert)"
-    $args = @(
+
+    $setup = Join-Path $installerRoot 'setup.exe'
+    Write-Host ('  ergaenze Workload in: {0}' -f $target.installationPath)
+    Write-Host '  Download ca. 3 GB, Dauer 5-20 Minuten. Bitte warten.'
+    $setupArgs = @(
         'modify',
-        '--installPath', "`"$($target.installationPath)`"",
+        ('--installPath "{0}"' -f $target.installationPath),
         '--add', 'Microsoft.VisualStudio.Workload.VCTools',
         '--includeRecommended',
         '--quiet', '--norestart', '--wait'
     )
-    $p = Start-Process -FilePath $setup -ArgumentList $args -Wait -PassThru
-    if ($p.ExitCode -eq 3010) {
-        Write-Host "  Installation abgeschlossen — Neustart empfohlen." -ForegroundColor Yellow
-    } elseif ($p.ExitCode -ne 0) {
-        throw "VS-Installer endete mit Code $($p.ExitCode)."
+    $process = Start-Process -FilePath $setup -ArgumentList $setupArgs -Wait -PassThru
+    if ($process.ExitCode -eq 3010) {
+        Write-Host '  fertig - ein Neustart wird empfohlen.' -ForegroundColor Yellow
+    } elseif ($process.ExitCode -ne 0) {
+        throw ('VS-Installer endete mit Code {0}.' -f $process.ExitCode)
     }
 }
 
-Write-Step 5 $steps "Prüfen"
-$cl = & $vswhere -latest -products * `
-    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-    -find 'VC\Tools\MSVC\*\bin\Hostx64\x64\cl.exe' 2>$null | Select-Object -First 1
+# --- 5/5 Pruefen -----------------------------------------------------------
+Write-Step 5 'Pruefen'
 
+$compiler = Find-Compiler
 $missing = @()
-if (-not (Get-Command git   -ErrorAction SilentlyContinue)) { $missing += 'git' }
-if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { $missing += 'cmake' }
-if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) { $missing += 'ninja' }
-if (-not $cl) { $missing += 'MSVC (cl.exe)' }
+if (-not (Get-Command git.exe   -ErrorAction SilentlyContinue)) { $missing += 'git' }
+if (-not (Get-Command cmake.exe -ErrorAction SilentlyContinue)) { $missing += 'cmake' }
+if (-not (Get-Command ninja.exe -ErrorAction SilentlyContinue)) { $missing += 'ninja' }
+if (-not $compiler) { $missing += 'MSVC (cl.exe)' }
 
 if ($missing.Count -gt 0) {
-    Write-Host "  noch offen: $($missing -join ', ')" -ForegroundColor Yellow
-    Write-Host "  Neue Shell öffnen (PATH) und erneut prüfen."
+    Write-Host ('  noch offen: {0}' -f ($missing -join ', ')) -ForegroundColor Yellow
+    Write-Host '  Neue Shell oeffnen (PATH) und erneut pruefen.'
+    Read-Host 'Enter zum Schliessen'
     exit 1
 }
 
-Write-Host ""
-Write-Host "Alles vorhanden:" -ForegroundColor Green
-Write-Host "  git    $((git --version))"
-Write-Host "  cmake  $((cmake --version)[0])"
-Write-Host "  ninja  $((ninja --version))"
-Write-Host "  cl     $cl"
-Write-Host ""
-Write-Host "Nächster Schritt: neue Shell öffnen, dann"
-Write-Host "  cd C:\opencode-projekte\heptachord"
-Write-Host "  git init"
+Write-Host ''
+Write-Host 'Alles vorhanden:' -ForegroundColor Green
+Write-Host ('  git    {0}' -f ((git --version) -join ' '))
+Write-Host ('  cmake  {0}' -f ((cmake --version) | Select-Object -First 1))
+Write-Host ('  ninja  {0}' -f (ninja --version))
+Write-Host ('  cl     {0}' -f $compiler)
+Write-Host ''
+Write-Host 'Naechster Schritt (neue Shell):'
+Write-Host '  cd C:\opencode-projekte\heptachord'
+Write-Host '  cmake --preset vs'
+Read-Host 'Enter zum Schliessen'

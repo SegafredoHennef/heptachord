@@ -148,7 +148,12 @@ def _validate(params: list[Param]) -> None:
 
 
 def _f(value) -> str:
-    return f"{float(value):g}f"
+    # C++ verlangt bei Float-Literalen einen Dezimalpunkt oder Exponenten:
+    # "2f" ist ungueltig, "2.0f" nicht. %g laesst den Punkt bei Ganzzahlen weg.
+    text = f"{float(value):g}"
+    if "." not in text and "e" not in text and "E" not in text:
+        text += ".0"
+    return f"{text}f"
 
 
 def render_header(schema_version: int, params: list[Param]) -> str:

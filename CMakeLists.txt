@@ -1,11 +1,17 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(Heptachord VERSION 0.0.0 LANGUAGES CXX)
+project(Heptachord VERSION 0.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+# MSVC liest BOM-lose Quellen als Windows-Codepage. Ohne /utf-8 wuerden
+# Umlaute und Sonderzeichen in den Labels (ParameterTable.h) zerstoert.
+if (MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 add_subdirectory(extern/JUCE)
 
@@ -23,6 +29,9 @@ else()
 endif()
 
 # --- Plugin (Instrument, stiller Bus) + Standalone --------------------------
+# VST3 nach dem Build in den Systemordner kopieren (braucht Adminrechte).
+option(HEPTACHORD_COPY_PLUGIN "VST3 nach dem Build nach Program Files kopieren" OFF)
+
 juce_add_plugin(heptachord
     COMPANY_NAME             "Blakkmoon Audio"
     BUNDLE_ID                "com.blakkmoon.heptachord"
@@ -35,7 +44,7 @@ juce_add_plugin(heptachord
     NEEDS_MIDI_INPUT         TRUE
     NEEDS_MIDI_OUTPUT        TRUE
     VST3_CATEGORIES          Instrument Synth
-    COPY_PLUGIN_AFTER_BUILD  TRUE
+    COPY_PLUGIN_AFTER_BUILD  ${HEPTACHORD_COPY_PLUGIN}
 )
 
 target_sources(heptachord PRIVATE
