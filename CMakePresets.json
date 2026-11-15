@@ -1,0 +1,46 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "vs",
+      "displayName": "Visual Studio 18 2026 (x64)",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/vs"
+    },
+    {
+      "name": "ninja",
+      "displayName": "Ninja Release (MSVC, Developer Shell)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "ninja-debug",
+      "displayName": "Ninja Debug (MSVC, Developer Shell)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "vs-debug", "configurePreset": "vs", "configuration": "Debug" },
+    { "name": "vs-release", "configurePreset": "vs", "configuration": "Release" },
+    { "name": "ninja", "configurePreset": "ninja" },
+    { "name": "ninja-debug", "configurePreset": "ninja-debug" }
+  ],
+  "testPresets": [
+    {
+      "name": "vs-release",
+      "configurePreset": "vs",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "ninja",
+      "configurePreset": "ninja",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

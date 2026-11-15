@@ -1,0 +1,116 @@
+# Entscheidungs-Log
+
+Kurzprotokoll der Grill-Runden. ADRs nur für harte, schwer umkehrbare
+Entscheidungen; alles andere steht hier.
+
+## Runde 1
+
+1. **Produktform** — ein Build, kein Audio im Plugin; Standalone mit Test-Synth.
+   Siehe ADR 0001 (in Runde 2 auf Instrument mit stillem Bus korrigiert).
+2. **Lizenz** — AGPLv3, öffentliches Repo. Siehe ADR 0002.
+3. **Plattform/Hosts v1** — Windows 10/11, VST3; Live, Reaper, Bitwig, Cubase.
+   macOS/CLAP nach v1.
+4. **Projektstart** — neues Repo `Heptachord`, `astropath` bleibt Analyse-Archiv;
+   JUCE als Submodule, Catch2 per FetchContent.
+5. **Eingangsnote** — monophon, Last-Note-Priority; Basisgrad gerastet; Thru
+   gibt die Rohnote aus.
+6. **Step-Modi** — Play, Hold, Rest, Ratchet; `sN.offset` transponiert nur
+   H1–H3.
+7. **v1-Schnitt** — ohne Mod-Matrix, Free-Rate, MPE, MIDI-Learn; die sechs
+   CV-Funktionen werden host-automatisierbare Parameter.
+8. **Parameter/Preset** — deklarative Tabelle als SoT, JSON-Presets mit
+   `schemaVersion`. Siehe ADR 0003.
+9. **Velocity/Gate** — multiplikativ, `hN.velocity = 0` folgt der Eingabe.
+
+## Runde 2
+
+10. **Thru-Gate** — alle vier Stimmen sind gestept. Siehe ADR 0004.
+11. **Deklaration** — VST3-Instrument mit stillem Stereo-Bus, Kategorie
+    `Instrument|Synth`. Siehe ADR 0001.
+12. **Kanäle** — `output.mode` `Multi` (1–4) / `Single`. Siehe ADR 0005.
+13. **Clock** — läuft ab Transport-Start kontinuierlich; Gates nur bei
+    gehaltener Note; `reset` setzt am nächsten Step-Rand auf Step 1.
+14. **Swing/Slack** — Swing verzögert ungerade Steps bis 75 % der Step-Länge;
+    Slack global −100…+100 ms, additiv, auf < 1 Step geklemmt; kein
+    Per-Step-Slack in v1.
+15. **Latch** — hält die zuletzt gespielte Note, hält nur die Eingangsnote,
+    nicht die Gates; Aus/`reset`/Preset-Wechsel löscht sie.
+16. **Split** — `keyboardSplit` gestrichen; `thru.snap` = „Thru mitrasten",
+    Default aus.
+17. **Retune** — Skalen-/Grundton-/Preset-Wechsel wirken am nächsten Step-Rand.
+18. **Notenhaushalt** — Kanäle paarweise verschieden; Pitchwechsel per
+    Note-Off/Note-On am Step-Rand, kein Pitchbend; All-Notes-Off bei Stop und
+    Preset-Load.
+19. **Undo/Presets** — nur Host-Undo; 8 Factory-Presets (eine Referenz je
+    Skala), 4 Kombinationen in M5.
+20. **Test-Referenz** — unabhängige Python-Implementierung erzeugt die
+    12×8×4-CSV; C++-Tests lesen sie; dazu Property-Tests.
+
+## Runde 3
+
+21. **Rate-Basis** — 1.0 = ein Takt (4/4), also
+    `stepSeconds = rate × 4 × 60/BPM`; unsere Definition, im Binary nicht
+    beweisbar.
+22. **Name** — *Heptachord*, Hersteller „Blakkmoon Audio", Bundle-ID
+    `com.blakkmoon.heptachord`. Siehe ADR 0006.
+23. **Stimmenmaske** — pro Step und Stimme, vier Bools (`sN.v1…v4`).
+24. **Step-Modus** — pro Step global; `sN.ratchet` 2…8 nur bei Modus Ratchet.
+25. **Probability** — in v1, Default 100 %, wirkt nur bei Play/Ratchet.
+26. **degree/octave** — `degree` diatonisch, `octave` chromatisch danach.
+27. **GUI** — zwei Ebenen; Step-Detail als ausklappbares Panel unter dem Grid.
+28. **Default-Preset** — C Dur, 1/8, H1 +2 / H2 +4 / H3 +6 (Cmaj7), Gate 50 %.
+29. **Standalone** — eigener Transport (120 BPM, Leertaste), MIDI-Clock erst
+    M6; Test-Synth 4-stimmig (Sägezahn, Tiefpass, ADSR).
+
+## Runde 4
+
+30. **Name/Identität** — Heptachord, `com.blakkmoon.heptachord`, „Blakkmoon
+    Audio", Preset-Endung `.heptachord`. Siehe ADR 0006.
+31. **Parameter-Quelle** — `parameters.toml` ist die SoT; `docs/02-parameter.md`
+    wird daraus generiert. Siehe ADR 0003.
+32. **Velocity-Einheiten** — überall Prozent, 0…200 %, Default 100 %; intern
+    multiplikativ, geklemmt auf 1…127.
+33. **Gate** — 5…100 %, hart an der Step-Kante geklemmt; kein Überlappen in v1.
+34. **`sN.offset`** — diatonisch, ±7 Skalenschritte; einzige Chromatizität
+    bleibt `hN.octave`.
+35. **`harm.spread`** — `spread_i = 1 − spread × (i−1)/2`, i = H1…H3
+    (Default 0.3 → 100/85/70 %).
+36. **`sN.active` vs. Rest** — beides bleibt: inaktiv nimmt den Slot aus dem
+    Zyklus (PingPong/Random laufen nur über aktive Steps), Rest lässt das Raster
+    stehen.
+37. **Stimmenmaske** — 32 Einzel-Bools im Parameterraum, intern Bitmaske; kein
+    Bitmasken-Parameter nach außen.
+38. **Single-Modus** — `thru.channel` ist der Master-Kanal, `hN.channel` wird
+    ignoriert, Werte bleiben gespeichert.
+39. **`reset`** — bleibt als Trigger; `stepTrig` entfällt.
+40. **ID-Freeze** — Golden File `tests/parameter_ids.txt`, CI bricht bei
+    ID-Änderung; Änderung nur mit `schemaVersion`-Erhöhung und Migration.
+
+## Runde 5
+
+41. **JUCE** — 9.0.5 als Submodule auf den Tag-Commit gepinnt; Fallback bei
+    Build-Blockern: 8.0.15.
+42. **Toolchain** — MSVC 2022 (v143), C++20, CMake ≥ 3.28; Presets `vs2022`
+    (MSBuild) und `ninja-ci` (Ninja).
+43. **Targets** — `heptachord_core` (ohne JUCE), `heptachord_tests` (Catch2,
+    nur Core), `heptachord_plugin`, `heptachord_standalone`. Siehe ADR 0007.
+44. **Catch2** — v3 per FetchContent, exakter Tag, `GIT_SHALLOW`.
+45. **CI** — GitHub Actions, `windows-latest`, Debug/Release; pluginval mit
+    `--strictness-level 5` nur auf Release, blockiert den Merge.
+46. **JSON** — nur in der Plugin-Schicht (`juce::var`); Core arbeitet mit einem
+    flachen Struct. `schemaVersion` ganzzahlig ab 1, höhere Version = Fehler.
+47. **Python-Referenz** — 3.12, nur Standardbibliothek; CSV eingecheckt, CI
+    regeneriert und schlägt bei Abweichung fehl.
+48. **Release v1** — ZIP mit VST3/Standalone/Presets, keine Signierung,
+    SmartScreen-Hinweis in der README.
+49. **Versionierung** — SemVer ab `0.1.0` (nach M1), Tags `v0.1.0`; `1.0.0` bei
+    v1; `schemaVersion` davon unabhängig.
+50. **Doku** — `docs/03-spezifikation.md` als einzige Verhaltensspezifikation;
+    der alte Clone-Plan bleibt im Archiv.
+51. **M0 Definition of Done** — Repo + LICENSE + README, JUCE gepinnt,
+    `parameters.*` vollständig, Generator + Golden File, VST3/Standalone bauen,
+    Pluginval Stufe 5 in Reaper, CI grün, ein Commit.
+52. **Korrektur zu 31** — Die Parameter-Quelle ist **`parameters.toml`**, nicht
+    YAML: `tomllib` ist in der Python-Standardbibliothek, PyYAML wäre eine
+    zusätzliche Build-Abhängigkeit. Inhalt und Bedeutung bleiben wie in ADR
+    0003 beschrieben.

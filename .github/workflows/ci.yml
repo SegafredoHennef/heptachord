@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Parameter-Tabelle unveraendert?
+        run: python tools/gen_params.py --check
+
+      - name: MSVC-Umgebung
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        run: cmake --preset ninja
+
+      - name: Build
+        run: cmake --build --preset ninja
+
+      - name: Unit-Tests
+        run: ctest --preset ninja
+
+      - name: Pluginval (Stufe 5)
+        shell: pwsh
+        run: |
+          curl.exe -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_windows.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval -Force
+          $vst3 = "build/ninja/heptachord_artefacts/Release/VST3/Heptachord.vst3"
+          if (-not (Test-Path $vst3)) { throw "VST3 nicht gefunden: $vst3" }
+          ./pluginval/pluginval.exe --strictness-level 5 --validate-in-process --validate "$vst3"

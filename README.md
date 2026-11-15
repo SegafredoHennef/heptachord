@@ -1,0 +1,73 @@
+# Heptachord
+
+Stepweiser diatonischer Harmonizer: Aus einer gehaltenen Eingangsnote erzeugt
+Heptachord vier MIDI-Stimmen (Thru + H1–H3), die im Raster eines Acht-Step-
+Sequencers laufen. Jede Harmoniestimme folgt einem diatonischen Gradabstand,
+nie einer festen Halbtonzahl — dadurch bleibt jede Stimme in der Skala.
+
+Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
+Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
+Variante bringt einen einfachen Test-Synth mit.
+
+**Status: M0 (Grundgerüst).** Kein Release, keine Presets, kein GUI.
+
+## Struktur
+
+| Pfad | Inhalt |
+|---|---|
+| `src/core` | Domänenlogik, **ohne JUCE** (Skalen, Step-Engine, Notenlogik) |
+| `src/plugin` | JUCE-Wrapper, VST3-Build |
+| `src/standalone` | JUCE-Anwendung mit Test-Synth |
+| `tests` | Catch2-Tests, Golden Files, Referenzdaten |
+| `tools` | Generatoren (Parameter-Tabelle, Python-Referenz) |
+| `docs` | Spezifikation, ADRs, Entscheidungs-Log |
+| `parameters.toml` | Parameter-Tabelle als Single Source of Truth |
+
+## Parameter
+
+`parameters.toml` ist die Quelle. `src/core/ParameterTable.h`,
+`docs/02-parameter.md` und `tests/parameter_ids.txt` werden daraus erzeugt:
+
+```
+python tools/gen_params.py          # schreiben
+python tools/gen_params.py --check  # CI-Prüfung auf Drift
+```
+
+Parameter-IDs sind eingefroren (ADR 0003, `docs/entscheidungen.md` Nr. 40).
+
+## Bauen (geplant, in M0 zu verifizieren)
+
+Voraussetzungen: Windows 10/11, Visual Studio 2026 Build Tools mit
+C++-Workload (MSVC v143), CMake ≥ 3.28, Ninja, Python ≥ 3.11, Git.
+
+JUCE hängt als flaches Submodule am Tag `9.0.5`:
+
+```
+git submodule update --init --depth 1
+cmake --preset vs           # oder: --preset ninja (aus der Developer Shell)
+cmake --build --preset vs-release
+ctest --preset vs-release
+```
+
+`tools/setup/windows-toolchain.ps1` richtet die Toolchain ein (Adminrechte
+nötig, weil die C++-Workload maschinenweit installiert wird).
+
+## Doku
+
+- `docs/02-parameter.md` — Parametertabelle (generiert)
+- `docs/03-spezifikation.md` — Verhalten
+- `docs/entscheidungen.md` — Entscheidungs-Log der Design-Runden
+- `docs/adr/` — harte Entscheidungen
+- `GLOSSARY.md` — Begriffe der Domäne
+
+## Herkunft
+
+Heptachord ist funktional aus der Analyse des Reason-Rack-Extension
+„AstroPath Stepwise Harmonizer" abgeleitet. Es wird **kein Code, keine Grafik,
+keine Presets und kein Name** des Originals übernommen; alle Implementierungen
+sind eigenständig.
+
+## Lizenz
+
+AGPL-3.0 (siehe `LICENSE`). Der Quellcode ist vollständig eigen; JUCE 9 steht
+unter AGPLv3 (ADR 0002).

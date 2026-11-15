@@ -1,0 +1,83 @@
+cmake_minimum_required(VERSION 3.28)
+
+project(Heptachord VERSION 0.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+add_subdirectory(extern/JUCE)
+
+# --- Core: Domaenenlogik ohne JUCE (ADR 0007) -------------------------------
+add_library(heptachord_core STATIC
+    src/core/Scales.cpp
+)
+target_include_directories(heptachord_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_features(heptachord_core PUBLIC cxx_std_20)
+
+if (MSVC)
+    target_compile_options(heptachord_core PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(heptachord_core PRIVATE -Wall -Wextra)
+endif()
+
+# --- Plugin (Instrument, stiller Bus) + Standalone --------------------------
+juce_add_plugin(heptachord
+    COMPANY_NAME             "Blakkmoon Audio"
+    BUNDLE_ID                "com.blakkmoon.heptachord"
+    PLUGIN_MANUFACTURER_CODE Blkk
+    PLUGIN_CODE              Hptc
+    PRODUCT_NAME             "Heptachord"
+    FORMATS                  VST3 Standalone
+    IS_SYNTH                 TRUE
+    IS_MIDI_EFFECT           FALSE
+    NEEDS_MIDI_INPUT         TRUE
+    NEEDS_MIDI_OUTPUT        TRUE
+    VST3_CATEGORIES          Instrument Synth
+    COPY_PLUGIN_AFTER_BUILD  TRUE
+)
+
+target_sources(heptachord PRIVATE
+    src/plugin/ParameterLayout.cpp
+    src/plugin/PluginProcessor.cpp
+    src/plugin/PluginEditor.cpp
+)
+
+target_link_libraries(heptachord
+    PRIVATE
+        heptachord_core
+        juce::juce_audio_utils
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags
+)
+
+target_compile_definitions(heptachord PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+)
+
+# --- Tests ------------------------------------------------------------------
+include(FetchContent)
+
+FetchContent_Declare(Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG        v3.16.1
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(Catch2)
+
+enable_testing()
+
+add_executable(heptachord_tests
+    tests/test_scales.cpp
+    tests/test_parameters.cpp
+)
+target_link_libraries(heptachord_tests PRIVATE heptachord_core Catch2::Catch2WithMain)
+target_compile_definitions(heptachord_tests PRIVATE
+    HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(NAME core COMMAND heptachord_tests)

@@ -1,0 +1,331 @@
+# Heptachord — Parameter-Tabelle (Single Source of Truth)
+#
+# Quelle für src/core/ParameterTable.h, docs/02-parameter.md und
+# tests/parameter_ids.txt. Nicht von Hand in die generierten Dateien schreiben.
+# IDs sind eingefroren (docs/adr/0003, docs/entscheidungen.md Nr. 40).
+#
+# Typen: bool | int | float | choice | trigger
+# Familien (`[[family]]`) werden zu h1…h3 bzw. s1…s8 expandiert; `default` darf
+# eine Liste mit einem Wert pro Instanz sein.
+
+schema_version = 1
+
+[[group]]
+id = "global"
+label = "Global"
+
+[[group]]
+id = "thru"
+label = "Thru"
+
+[[group]]
+id = "harm"
+label = "Harmonien"
+
+[[group]]
+id = "voice"
+label = "Stimmen"
+
+[[group]]
+id = "step"
+label = "Steps"
+
+# ---------------------------------------------------------------- Global
+
+[[param]]
+id = "root"
+group = "global"
+label = "Grundton"
+type = "choice"
+choices = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "B"]
+default = "C"
+note = "Bezugston der Skala"
+
+[[param]]
+id = "scale"
+group = "global"
+label = "Skala"
+type = "choice"
+choices = ["Dur", "Moll", "Harmonisch Moll", "Melodisch Moll", "Dorisch", "Phrygisch", "Lydisch", "Mixolydisch"]
+default = "Dur"
+note = "Reihenfolge wie im Original"
+
+[[param]]
+id = "rate"
+group = "global"
+label = "Rate"
+type = "choice"
+choices = ["1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "3/8", "1/2", "2/3", "3/4", "1", "4/3", "3/2", "2", "3", "4", "8"]
+default = "1/8"
+note = "17 Werte, 1.0 = ein Takt (4/4)"
+
+[[param]]
+id = "direction"
+group = "global"
+label = "Richtung"
+type = "choice"
+choices = ["Vorwärts", "Rückwärts", "PingPong", "Zufall"]
+default = "Vorwärts"
+note = "läuft nur über aktive Steps"
+
+[[param]]
+id = "swing"
+group = "global"
+label = "Swing"
+type = "float"
+min = 0.0
+max = 75.0
+default = 0.0
+unit = "%"
+note = "verzögert die ungeraden Steps"
+
+[[param]]
+id = "slack"
+group = "global"
+label = "Slack"
+type = "float"
+min = -100.0
+max = 100.0
+default = 0.0
+unit = "ms"
+note = "globaler Versatz, auf weniger als eine Step-Länge geklemmt"
+
+[[param]]
+id = "latch"
+group = "global"
+label = "Latch"
+type = "bool"
+default = false
+note = "hält die zuletzt gespielte Note"
+
+[[param]]
+id = "output.mode"
+group = "global"
+label = "Ausgabe"
+type = "choice"
+choices = ["Multi", "Single"]
+default = "Multi"
+note = "Multi = eine Stimme pro Kanal, Single = alle auf thru.channel"
+
+[[param]]
+id = "reset"
+group = "global"
+label = "Reset"
+type = "trigger"
+note = "setzt am nächsten Step-Rand auf Step 1"
+
+# ------------------------------------------------------------------ Thru
+
+[[param]]
+id = "thru.enable"
+group = "thru"
+label = "Aktiv"
+type = "bool"
+default = true
+
+[[param]]
+id = "thru.snap"
+group = "thru"
+label = "Thru mitrasten"
+type = "bool"
+default = false
+note = "an = auch Thru wird auf die Skala gesnappt"
+
+[[param]]
+id = "thru.velocity"
+group = "thru"
+label = "Velocity"
+type = "float"
+min = 0.0
+max = 200.0
+default = 100.0
+unit = "%"
+note = "Faktor auf die Eingabe-Velocity"
+
+[[param]]
+id = "thru.channel"
+group = "thru"
+label = "Kanal"
+type = "int"
+min = 1
+max = 16
+default = 1
+note = "im Modus Single der Master-Kanal"
+
+# ----------------------------------------------------------------- Harm
+
+[[param]]
+id = "harm.velocity"
+group = "harm"
+label = "Velocity H1–H3"
+type = "float"
+min = 0.0
+max = 200.0
+default = 100.0
+unit = "%"
+
+[[param]]
+id = "harm.spread"
+group = "harm"
+label = "Spread"
+type = "float"
+min = 0.0
+max = 1.0
+default = 0.3
+note = "spread_i = 1 − spread × (i−1)/2, i = H1…H3"
+
+# -------------------------------------------------------------- Stimmen
+
+[[family]]
+id = "h"
+count = 3
+group = "voice"
+label = "H{n}"
+
+[[family.param]]
+name = "enable"
+label = "Aktiv"
+type = "bool"
+default = true
+
+[[family.param]]
+name = "degree"
+label = "Grad"
+type = "int"
+min = -14
+max = 14
+default = [2, 4, 6]
+note = "diatonische Skalenschritte"
+
+[[family.param]]
+name = "octave"
+label = "Oktave"
+type = "int"
+min = -3
+max = 3
+default = 0
+note = "chromatisch, nach degree"
+
+[[family.param]]
+name = "velocity"
+label = "Velocity"
+type = "float"
+min = 0.0
+max = 200.0
+default = 100.0
+unit = "%"
+note = "wird von follow überstimmt"
+
+[[family.param]]
+name = "follow"
+label = "Vel. folgt"
+type = "bool"
+default = true
+note = "an = velocity wird ignoriert"
+
+[[family.param]]
+name = "gate"
+label = "Gate"
+type = "float"
+min = 5.0
+max = 100.0
+default = 50.0
+unit = "%"
+note = "relativ zur Step-Länge, an der Step-Kante geklemmt"
+
+[[family.param]]
+name = "channel"
+label = "Kanal"
+type = "int"
+min = 1
+max = 16
+default = [2, 3, 4]
+note = "nur im Modus Multi"
+
+# ---------------------------------------------------------------- Steps
+
+[[family]]
+id = "s"
+count = 8
+group = "step"
+label = "S{n}"
+
+[[family.param]]
+name = "active"
+label = "Aktiv"
+type = "bool"
+default = true
+note = "aus = Slot fällt aus dem Zyklus"
+
+[[family.param]]
+name = "mode"
+label = "Modus"
+type = "choice"
+choices = ["Play", "Hold", "Rest", "Ratchet"]
+default = "Play"
+
+[[family.param]]
+name = "offset"
+label = "Offset"
+type = "int"
+min = -7
+max = 7
+default = 0
+note = "diatonisch, nur H1–H3"
+
+[[family.param]]
+name = "velocity"
+label = "Velocity"
+type = "float"
+min = 0.0
+max = 200.0
+default = 100.0
+unit = "%"
+note = "Akzente über 100 %"
+
+[[family.param]]
+name = "probability"
+label = "Wahrsch."
+type = "float"
+min = 0.0
+max = 100.0
+default = 100.0
+unit = "%"
+note = "wirkt nur bei Play und Ratchet"
+
+[[family.param]]
+name = "ratchet"
+label = "Ratchet"
+type = "int"
+min = 2
+max = 8
+default = 2
+note = "nur im Modus Ratchet"
+
+[[family.param]]
+name = "v1"
+label = "Stimme 1"
+type = "bool"
+default = true
+note = "Stimmenmaske: Thru"
+
+[[family.param]]
+name = "v2"
+label = "Stimme 2"
+type = "bool"
+default = true
+note = "Stimmenmaske: H1"
+
+[[family.param]]
+name = "v3"
+label = "Stimme 3"
+type = "bool"
+default = true
+note = "Stimmenmaske: H2"
+
+[[family.param]]
+name = "v4"
+label = "Stimme 4"
+type = "bool"
+default = true
+note = "Stimmenmaske: H3"

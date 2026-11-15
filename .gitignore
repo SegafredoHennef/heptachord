@@ -1,0 +1,14 @@
+# Build
+build/
+out/
+bin/
+obj/
+.vs/
+.vscode/
+CMakeUserPresets.json
+*.user
+
+# Werkzeuge
+.cache/
+__pycache__/
+*.pyc
