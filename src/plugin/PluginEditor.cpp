@@ -347,7 +347,14 @@ void Editor::paint (juce::Graphics& g)
         juce::String subtitle = "Stepwise Harmonizer - " + juce::String (params::kNumParameters) + " Parameter";
 
         if (standalone)
+        {
             subtitle += "  |  Tastatur A-K, Y/Z Oktave, Leertaste Start/Stop";
+
+            if (processor.clockActive())
+                subtitle += "  |  Clock: " + juce::String (processor.clockBpm(), 0) + " BPM (MIDI)";
+            else
+                subtitle += "  |  Clock: intern 120 BPM";
+        }
 
         g.drawText (subtitle, area.removeFromTop (14), juce::Justification::centredLeft);
     }

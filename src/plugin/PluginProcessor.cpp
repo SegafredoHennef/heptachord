@@ -18,17 +18,38 @@ Processor::Processor()
     m_binding.connect (apvts);
 }
 
-Processor::~Processor() = default;
+Processor::~Processor()
+{
+    // Der Eingang muss vor MidiClock verschwinden: Sein Callback-Thread
+    // darf nicht mehr auf das bereits zerstoerte m_clock zugreifen.
+    closeClockInput();
+}
 
 void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
 {
     m_bridge.prepare (sampleRate, maximumExpectedSamplesPerBlock);
     m_synth.prepare (sampleRate);
     m_standalonePpq = 0.0;
+
+    // MIDI-Clock: automatisch der erste verfuegbare Eingang (Entscheidung 78).
+    // Kein Geraet oder ein Fehler bedeutet still den Fallback auf 120 BPM.
+    if (isStandalone())
+    {
+        const auto devices = juce::MidiInput::getAvailableDevices();
+
+        if (! devices.isEmpty())
+        {
+            m_clockInput = juce::MidiInput::openDevice (devices.getReference (0).identifier, this);
+
+            if (m_clockInput != nullptr)
+                m_clockInput->start();
+        }
+    }
 }
 
 void Processor::releaseResources()
 {
+    closeClockInput();
     m_bridge.requestAllNotesOff();
     m_synth.reset();
 }
@@ -52,13 +73,36 @@ HostTimeline Processor::buildTimeline (int numSamples) noexcept
     if (isStandalone())
     {
         timeline.positionValid = true;
-        timeline.isPlaying = m_standalonePlaying.load (std::memory_order_relaxed);
-        timeline.ppqPosition = m_standalonePpq;
 
-        if (timeline.isPlaying)
-            m_standalonePpq += static_cast<double> (numSamples) * kStandaloneBpm / (60.0 * timeline.sampleRate);
+        // MIDI-Clock hat Vorrang, solange er aktiv ist (Entscheidungen 79/80).
+        const auto snap = m_clock.snapshot (juce::Time::getMillisecondCounterHiRes() * 0.001);
+
+        if (snap.active)
+        {
+            timeline.bpm = snap.bpm;
+            timeline.isPlaying = snap.playing;
+            timeline.ppqPosition = snap.ppq;
+            m_clockWasActive = true;
+        }
         else
-            m_standalonePpq = 0.0;
+        {
+            // Timeout: die letzte Clock-Position einmal uebernehmen, dann
+            // der manuelle Fallback (120 BPM, Leertaste/Knopf).
+            if (m_clockWasActive)
+            {
+                m_standalonePpq = snap.ppq;
+                m_clockWasActive = false;
+            }
+
+            timeline.bpm = kStandaloneBpm;
+            timeline.isPlaying = m_standalonePlaying.load (std::memory_order_relaxed);
+            timeline.ppqPosition = m_standalonePpq;
+
+            if (timeline.isPlaying)
+                m_standalonePpq += static_cast<double> (numSamples) * kStandaloneBpm / (60.0 * timeline.sampleRate);
+            else
+                m_standalonePpq = 0.0;
+        }
 
         return timeline;
     }
@@ -140,6 +184,44 @@ void Processor::injectKeyboardNoteOff (int noteNumber)
 void Processor::toggleStandaloneTransport() noexcept
 {
     m_standalonePlaying.store (! isStandalonePlaying(), std::memory_order_relaxed);
+}
+
+void Processor::handleIncomingMidiMessage (juce::MidiInput* source, const juce::MidiMessage& message)
+{
+    juce::ignoreUnused (source);
+
+    if (! isStandalone())
+        return;
+
+    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+
+    if (message.isMidiStart())
+        m_clock.start (now);
+    else if (message.isMidiContinue())
+        m_clock.continueClock (now);
+    else if (message.isMidiStop())
+        m_clock.stop (now);
+    else if (message.isMidiClock())
+        m_clock.tick (now);
+}
+
+bool Processor::clockActive() const noexcept
+{
+    return m_clock.snapshot (juce::Time::getMillisecondCounterHiRes() * 0.001).active;
+}
+
+double Processor::clockBpm() const noexcept
+{
+    return m_clock.snapshot (juce::Time::getMillisecondCounterHiRes() * 0.001).bpm;
+}
+
+void Processor::closeClockInput() noexcept
+{
+    if (m_clockInput != nullptr)
+    {
+        m_clockInput->stop();
+        m_clockInput.reset();
+    }
 }
 
 juce::AudioProcessorEditor* Processor::createEditor()

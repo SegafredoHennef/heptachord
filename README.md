@@ -9,12 +9,13 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: M5 - Presets.** Signalweg (M2b), Oberfläche (M3) und Presets sind
-fertig: alle 115 Parameter liegen auf einer Seite (globale Leiste, Stimmen,
-acht Step-Spalten), das Erscheinungsbild ist ein eigenes dunkles
-Look-and-Feel, acht Factory-Presets (je eins pro Skala) lassen sich aus der
-Kopfzeile laden. Der Standalone hat eine QWERTZ-freundliche Mini-Klaviatur
-(A-K = Noten, Y/Z/X = Oktave, Leertaste = Transport). Release steht noch aus.
+**Status: M6 - MIDI-Clock.** Signalweg (M2b), Oberfläche (M3), Presets (M5)
+und MIDI-Clock sind fertig: alle 115 Parameter liegen auf einer Seite (globale
+Leiste, Stimmen, acht Step-Spalten), das Erscheinungsbild ist ein eigenes
+dunkles Look-and-Feel, acht Factory-Presets laden aus der Kopfzeile. Der
+Standalone folgt im Play-Modus dem ersten MIDI-Eingang als Clock-Master
+(FA/FC/FB, 30–300 BPM, 2 s Timeout → Fallback auf 120 BPM); ohne Clock läuft
+der manuelle Transport wie bisher. Release steht noch aus.
 
 ## Struktur
 

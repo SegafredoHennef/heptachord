@@ -4,9 +4,13 @@
 #include "plugin/ProcessorBridge.h"
 #include "plugin/TestSynth.h"
 
+#include "core/MidiClock.h"
+
+#include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <atomic>
+#include <memory>
 #include <mutex>
 
 namespace heptachord
@@ -18,7 +22,8 @@ class Editor;
 // Die Ereignisschicht liegt im Core (StepEngine); hier werden Parameter,
 // Host-Transport und MIDI angebunden. Im Standalone kommt ein Test-Synth
 // dazu (Spezifikation Abschnitt 10).
-class Processor final : public juce::AudioProcessor
+class Processor final : public juce::AudioProcessor,
+                        private juce::MidiInputCallback
 {
 public:
     Processor();
@@ -28,6 +33,10 @@ public:
     void releaseResources() override;
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages) override;
+
+    // MIDI-Clock-Eingang (juce::MidiInputCallback), nur im Standalone genutzt.
+    void handleIncomingMidiMessage (juce::MidiInput* source,
+                                    const juce::MidiMessage& message) override;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -52,6 +61,10 @@ public:
     void toggleStandaloneTransport() noexcept;
     bool isStandalonePlaying() const noexcept { return m_standalonePlaying.load (std::memory_order_relaxed); }
 
+    // MIDI-Clock-Anzeige fuer den Editor (Entscheidung 79).
+    bool clockActive() const noexcept;
+    double clockBpm() const noexcept;
+
     // Reset-Taster des Editors: loest die Flanke ohne Parameter-Rückschreiben
     // aus (Entscheidung 67).
     void triggerReset() noexcept { m_bridge.requestReset(); }
@@ -71,6 +84,9 @@ public:
 private:
     HostTimeline buildTimeline (int numSamples) noexcept;
 
+    // MIDI-Clock-Eingang schliessen (Destruktor, releaseResources).
+    void closeClockInput() noexcept;
+
     ParameterBinding m_binding {};
     ProcessorBridge m_bridge {};
     TestSynth m_synth {};
@@ -80,6 +96,11 @@ private:
 
     juce::MidiBuffer m_keyboardMidi;
     std::mutex m_keyboardMutex;
+
+    // MIDI-Clock (M6): erster verfuegbarer Eingang, nur im Standalone.
+    std::unique_ptr<juce::MidiInput> m_clockInput;
+    MidiClock m_clock;
+    bool m_clockWasActive = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Processor)
 };

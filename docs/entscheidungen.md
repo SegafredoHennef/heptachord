@@ -257,3 +257,23 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Elternverzeichnis/presets (der Standalone liegt in Release/Standalone,
     die Dateien in Release/presets). Schlecht geladene Factory-Presets werden
     still uebersprungen; der Editor zeigt die gefundenen Namen.
+
+## Runde 12 (M6 - MIDI-Clock)
+
+78. **Automatischer erster MIDI-Eingang** - Der Standalone oeffnet beim
+    Prepare den ersten verfuegbaren MIDI-Eingang (MidiInput::openDevice) und
+    zeigt seinen Status im Editor-Header. Keine Auswahl-Combo (Scope). Kein
+    Geraet oder Oeffnen fehlgeschlagen = stiller Fallback auf 120 BPM plus
+    manuellem Transport; das Verhalten ohne Clock bleibt identisch zu M5.
+    Das VST3 oeffnet keinen Eingang; dort ist der Host-PlayHead die Quelle.
+79. **BPM aus 24 Clock-Intervallen** - Ein Viertel = 24 F8; der Tracker
+    fuehrt einen Ring der letzten 25 Zeitstempel und rechnet
+    bpm = 60 / (t[24] - t[0]), geklemmt auf 30..300 BPM. Die Mittelung
+    dampaeft Jitter des Masters; ohne volle 24 Intervalle gilt der Default
+    120 BPM. ppq = Clocks/24 seit FA.
+80. **Transport und Timeout** - FA startet (ppq = 0), FC stoppt, FB setzt
+    ohne Positionsverlust fort; Leertaste/Knopf bleiben zusaetzlich manuell,
+    die Clock hat Vorrang, solange sie aktiv ist. 2 s ohne F8 beenden die
+    Clock-Quelle: die Position wird einmal uebernommen, danach laeuft der
+    Fallback (120 BPM, manueller Transport). Der Timeout verhindert, dass ein
+    ausgeschalteter Master das Plugin einfriert.

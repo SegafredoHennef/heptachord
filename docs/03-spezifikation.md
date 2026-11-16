@@ -546,7 +546,16 @@ Blocks.
   Y oder Z = Oktave runter, X = Oktave rauf, Leertaste = Transport. Das
   Mapping folgt dem Zeichencode der Beschriftung und funktioniert so auf
   QWERTY und QWERTZ. MIDI-Eingänge bleiben nebenher unterstützt.
-- MIDI-Clock-Eingang erst ab M6.
+- MIDI-Clock-Eingang (Entscheidungen 78–80): Der Standalone öffnet automatisch
+  den ersten verfügbaren MIDI-Eingang und wertet dessen Clock aus (24 pulses
+  per quarter note). FA startet, FC stoppt, FB setzt fort; F8 liefern das
+  Tempo (Mittelung über 24 Clocks, clamp 30–300 BPM) und die Position
+  (ppq = Clocks/24, FA setzt sie zurück). Ohne aktive Clock gilt unverändert
+  der manuelle Transport mit 120 BPM; 2 s ohne F8 fallen auf 120 BPM zurück,
+  wobei die Position einmal aus der Clock übernommen wird. Der Header zeigt
+  den Zustand („Clock: N BPM (MIDI)" oder „Clock: intern 120 BPM").
+- Im VST3 ignoriert das Plugin MIDI-Clock; Tempo- und Positionsquelle bleibt
+  der Host-PlayHead.
 - Der Standalone nutzt denselben Core und denselben Editor. Nur der
   Standalone-Wrapper schreibt Audio; der VST3-Ausgang bleibt still.
 
@@ -624,6 +633,7 @@ Referenz für die Testdateien.
 | T17 | Step-Kanten liegen auf Sample-Grenzen, Jitter ≤ 1 Sample | Event-Test (`test_engine.cpp`, M2a) |
 | T18 | Parameter-IDs unverändert | Golden File `tests/parameter_ids.txt` + CI |
 | T19 | Mini-Klaviatur: A–K → C–C, Y/Z runter, X rauf, Leertaste Transport | Unit-Test (`test_computerkeyboard.cpp`) |
+| T20 | MIDI-Clock: 24 F8 = 1 Viertel, FA/FC/FB steuern Transport, 2 s Timeout → Fallback | Unit-Test (`test_midiclock.cpp`) |
 
 ---
 

@@ -23,6 +23,7 @@ add_library(heptachord_core STATIC
     src/core/StepPlanner.cpp
     src/core/NoteTracker.cpp
     src/core/StepEngine.cpp
+    src/core/MidiClock.cpp
     src/core/SettingsFromValues.cpp
 )
 target_include_directories(heptachord_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -100,6 +101,7 @@ add_executable(heptachord_tests
     tests/test_planner.cpp
     tests/test_notetracker.cpp
     tests/test_engine.cpp
+    tests/test_midiclock.cpp
     tests/test_settings.cpp
     tests/test_bridge.cpp
     tests/test_synth.cpp
