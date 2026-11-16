@@ -103,32 +103,88 @@ function Find-Compiler {
     return $null
 }
 
+function Find-InstallPath {
+    # vswhere kennt nur vollstaendig registrierte Instanzen. Genau daran ist
+    # die erste Fassung gescheitert: die Build Tools standen in den Paketen,
+    # vswhere lieferte aber eine leere Liste. Deshalb drei Stufen.
+    $paths = & $vswhere -products * -property installationPath 2>$null
+    if ($paths) { return ($paths | Select-Object -First 1) }
+
+    $instances = Join-Path $env:ProgramData 'Microsoft\VisualStudio\Packages\_Instances'
+    if (Test-Path $instances) {
+        $states = Get-ChildItem $instances -Recurse -Filter 'state.json' -ErrorAction SilentlyContinue
+        foreach ($state in $states) {
+            try {
+                $json = Get-Content -Raw -LiteralPath $state.FullName | ConvertFrom-Json
+                if ($json.installationPath) { return $json.installationPath }
+            } catch {
+                # beschaedigte state.json ueberspringen
+            }
+        }
+    }
+
+    $known = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\18\BuildTools'),
+        (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\2022\BuildTools'),
+        (Join-Path $env:ProgramFiles 'Microsoft Visual Studio\2022\BuildTools')
+    )
+    foreach ($candidate in $known) {
+        if (Test-Path $candidate) { return $candidate }
+    }
+    return $null
+}
+
 $compiler = Find-Compiler
 if ($compiler) {
     Write-Host ('  vorhanden: {0}' -f $compiler)
 } else {
-    $instances = & $vswhere -products * -format json 2>$null | ConvertFrom-Json
-    $target = $instances | Where-Object { $_.installationPath } | Select-Object -First 1
+    $target = Find-InstallPath
     if (-not $target) {
         throw 'Keine Visual-Studio-Instanz gefunden. Bitte "Visual Studio Build Tools" installieren.'
     }
 
-    $setup = Join-Path $installerRoot 'setup.exe'
-    Write-Host ('  ergaenze Workload in: {0}' -f $target.installationPath)
-    Write-Host '  Download ca. 3 GB, Dauer 5-20 Minuten. Bitte warten.'
-    $setupArgs = @(
-        'modify',
-        ('--installPath "{0}"' -f $target.installationPath),
-        '--add', 'Microsoft.VisualStudio.Workload.VCTools',
-        '--includeRecommended',
-        '--quiet', '--norestart', '--wait'
-    )
-    $process = Start-Process -FilePath $setup -ArgumentList $setupArgs -Wait -PassThru
-    if ($process.ExitCode -eq 3010) {
-        Write-Host '  fertig - ein Neustart wird empfohlen.' -ForegroundColor Yellow
-    } elseif ($process.ExitCode -ne 0) {
-        throw ('VS-Installer endete mit Code {0}.' -f $process.ExitCode)
+    $free = (Get-PSDrive C).Free
+    if ($free -lt 7GB) {
+        throw ('Zu wenig Platz auf C: {0:N1} GB frei, die C++-Workload braucht ca. 6,6 GB.' -f ($free / 1GB))
     }
+
+    $setup = Join-Path $installerRoot 'setup.exe'
+    Write-Host ('  ergaenze Workload in: {0}' -f $target)
+    Write-Host ('  freier Platz: {0:N1} GB' -f ($free / 1GB))
+    Write-Host '  Download ca. 3 GB, Dauer 5-20 Minuten.'
+
+    # Der Installer ab VS 2026 kennt --wait nicht mehr und koppelt sich ab.
+    # Deshalb eine Argumentzeile als String (Array verliert die Quotes am
+    # Leerzeichen in "Program Files (x86)") und danach auf cl.exe warten.
+    $registered = & $vswhere -products * -property installationPath 2>$null
+    if ($registered) {
+        $argLine = 'modify --installPath "' + $target + '" ' +
+                   '--add Microsoft.VisualStudio.Workload.VCTools ' +
+                   '--includeRecommended --quiet --norestart'
+    } else {
+        # Verzeichnis existiert, ist dem Installer aber unbekannt - etwa nach
+        # manuellem Loeschen des Paket-Caches. Dann neu registrieren statt
+        # "modify" (das meldet sonst "Produkt nicht gefunden").
+        Write-Host '  Instanz ist dem Installer unbekannt - registriere neu.'
+        $argLine = 'install --installPath "' + $target + '" ' +
+                   '--productId Microsoft.VisualStudio.Product.BuildTools ' +
+                   '--channelUri https://aka.ms/vs/18/stable/channel ' +
+                   '--add Microsoft.VisualStudio.Workload.VCTools ' +
+                   '--includeRecommended --quiet --norestart'
+    }
+    $process = Start-Process -FilePath $setup -ArgumentList $argLine -PassThru
+    Write-Host ('  Installer gestartet (PID {0}), warte auf cl.exe ...' -f $process.Id)
+
+    $vcvars = Join-Path $target 'VC\Auxiliary\Build\vcvars64.bat'
+    for ($i = 0; $i -lt 160 -and -not (Test-Path $vcvars); $i++) {
+        Start-Sleep -Seconds 15
+        if ($i % 8 -eq 7) { Write-Host ('  ... {0} min' -f [int]((($i + 1) * 15) / 60)) }
+    }
+
+    if (-not (Test-Path $vcvars)) {
+        throw 'Der Compiler ist nach 40 Minuten nicht aufgetaucht. Bitte den Visual Studio Installer oeffnen und die C++-Workload von Hand setzen.'
+    }
+    Write-Host '  C++-Workload installiert.' -ForegroundColor Green
 }
 
 # --- 5/5 Pruefen -----------------------------------------------------------

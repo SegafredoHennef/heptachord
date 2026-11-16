@@ -114,3 +114,38 @@ Entscheidungen; alles andere steht hier.
     YAML: `tomllib` ist in der Python-Standardbibliothek, PyYAML wäre eine
     zusätzliche Build-Abhängigkeit. Inhalt und Bedeutung bleiben wie in ADR
     0003 beschrieben.
+
+## Runde 6 (Präzisierung der Spezifikation)
+
+Aus dem Schreiben von `docs/03-spezifikation.md` (Entscheidung 50) ergaben sich
+Lücken, die die bisherigen Entscheidungen nicht abdeckten. Sie sind hier
+festgehalten; die vollständige Begründung steht in der Spezifikation.
+
+53. **Velocity-Folge** — `hN.follow = true` (Default) heißt: `hN.velocity` wird
+    ignoriert, die Stimme spielt die Eingangs-Velocity (mal Spread, mal
+    Step-Akzent). `follow = false` heißt: `hN.velocity` wirkt als Faktor auf die
+    Eingangs-Velocity. Damit ersetzt `follow` die frühere Konvention
+    „`hN.velocity = 0` folgt der Eingabe" (Nr. 9) — 0 % ist jetzt ein
+    Sonderfall, der auf 1 geklemmt wird.
+54. **Rastung** — `snapToScale` rastet **root-relativ**: die Kandidaten sind
+    `root + 12·k + skala[i]`, nicht absolute C-Dur-Töne. Die bisherige
+    Implementierung nimmt implizit Root C an und wird in M1 umgestellt.
+55. **Thru-Gate** — in v1 gibt es keinen Gate-Parameter für die Thru-Stimme;
+    ihr Gate ist fest 100 % der Schrittlänge. Ein `thru.gate` ist Kandidat für
+    v1.1 und würde eine `schemaVersion`-Erhöhung brauchen (Nr. 40).
+56. **Step-Akzent** — `sN.velocity` wirkt auf **alle** Stimmen des Steps,
+    auch auf Thru. `harm.spread` wirkt dagegen nur auf H1–H3.
+57. **Ratchet-Verteilung** — Treffer `k` (0-basiert) bei
+    `Step-Grenze + k · stepSeconds / ratchet`; die Gate-Länge wird zusätzlich
+    auf `stepSeconds / ratchet` geklemmt. Die Wahrscheinlichkeit wird **pro
+    Treffer** gewürfelt, nicht pro Step.
+58. **Traversal** — Die Richtung läuft über die *aktiven* Steps. PingPong
+    wiederholt die Endpunkte nicht (`0 … k−1, k−2 … 1, 0, 1 …`), Zufall darf
+    denselben Step zweimal hintereinander wählen. Swing wirkt auf die geraden
+    Traversal-Slots (2., 4. …), Slack global auf alle.
+59. **Hold** — Der Trigger wird einmal gesetzt; die Note wird über Step-Grenzen
+    hinweg gehalten und erst beendet, wenn ein Step kommt, in dem die Stimme
+    nicht maskiert ist oder der Modus Play/Ratchet gilt.
+60. **Präzisierungen** — Die in der Spezifikation mit `[Präzisierung]`
+    markierten Festlegungen gelten als verbindlich, bis sie hier bestätigt oder
+    geändert werden.
