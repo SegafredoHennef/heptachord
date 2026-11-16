@@ -58,6 +58,7 @@ target_sources(heptachord PRIVATE
     src/plugin/ParameterBinding.cpp
     src/plugin/ProcessorBridge.cpp
     src/plugin/TestSynth.cpp
+    src/plugin/LookAndFeel.cpp
     src/plugin/PluginProcessor.cpp
     src/plugin/PluginEditor.cpp
 )

@@ -34,6 +34,9 @@ public:
     // Preset-Wechsel, Editor schliessen, Deaktivierung.
     void requestAllNotesOff() noexcept { m_engine.requestAllNotesOff(); }
 
+    // Reset-Taster (Flanke, ohne Parameter-Rückschreiben).
+    void requestReset() noexcept { m_engine.requestReset(); }
+
     // Nur fuer Tests und Diagnose.
     const StepEngine& engine() const noexcept { return m_engine; }
     const EngineSettings& settings() const noexcept { return m_engine.settings(); }

@@ -51,6 +51,10 @@ public:
     void toggleStandaloneTransport() noexcept;
     bool isStandalonePlaying() const noexcept { return m_standalonePlaying.load (std::memory_order_relaxed); }
 
+    // Reset-Taster des Editors: loest die Flanke ohne Parameter-Rückschreiben
+    // aus (Entscheidung 67).
+    void triggerReset() noexcept { m_bridge.requestReset(); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:

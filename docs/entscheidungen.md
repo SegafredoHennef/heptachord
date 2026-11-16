@@ -204,3 +204,28 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     (120 BPM, Leertaste oder Knopf). Der VST3-Ausgang bleibt still, damit die
     Kategorie „Instrument" erhalten bleibt und der Host keine Fremd-Audioquelle
     bekommt. Beide nutzen denselben Core.
+
+## Runde 10 (M3 — Editor)
+
+70. **Einseitiges Layout mit drei Zonen** — Der Editor zeigt alles auf einer
+    fixen Seite von 1000×664 logischen Pixeln: oben die globale Leiste, in der
+    Mitte die Stimmen (Thru + H1–H3 als Zeilen), unten die acht Step-Spalten.
+    Alle 115 Parameter sind gleichzeitig bedienbar, ohne Reiter oder
+    ausklappbare Panels aus Nr. 27. Die feste Größe hält das Raster der
+    Step-Spalten stabil und macht die Erweiterung nach unten (Nr. 27) für v1
+    überflüssig.
+71. **Anbindung über `AudioProcessorValueTreeState`** — Jedes Control hängt mit
+    einer `SliderAttachment`/`ComboBoxAttachment`/`ButtonAttachment` direkt am
+    APVTS; es gibt keinen doppelten Zustand im Editor. Der Reset-Knopf ruft
+    `Processor::triggerReset()` auf und setzt keinen Parameter (Nr. 67). Die
+    Beschriftungen (Regler-Captions, Zonentitel, Step-Nummern) werden in
+    `paint()` aus Anker-Rechtecken gezeichnet, nicht als eigene `Label`-Kinder;
+    so bleibt die Kinderzahl bei genau einem Control je Parameter.
+72. **Eigenes dunkles Look-and-Feel, eine Akzentfarbe** — Ein eigener
+    `LookAndFeel_V4`-Ableger zeichnet Regler, Combos, Toggles und Knöpfe; Farbe
+    `#FF8A3D` ist der einzige Akzent (Wert, aktiv, Fokus), dazu drei
+    Flächentöne (Hintergrund `#13161A`, Panel `#1B1F25`, erhöht `#232830`) und
+    Text `#E8E6E1`. Der echte Lauf zeigte zu kleine Regler: Einzug 7 → 3.5 px,
+    Ringbreite 0.16 → 0.15 des Radius, Reglerhöhe 54 px; die Tooltips kommen
+    direkt aus `parameters.toml` (`note`-Feld), damit die Doku nicht doppelt
+    gepflegt wird.

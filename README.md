@@ -9,9 +9,10 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: M2b — Signalweg vollständig.** Parameter, Host-Transport und
-MIDI-Ausgabe sind angebunden, der Standalone spielt über einen Test-Synth.
-Editor (M3), Presets (M5) und Release stehen noch aus.
+**Status: M3 — Editor.** Signalweg (M2b) und Oberfläche sind fertig: alle 115
+Parameter liegen auf einer Seite (globale Leiste, Stimmen, acht Step-Spalten),
+das Erscheinungsbild ist ein eigenes dunkles Look-and-Feel. Presets (M5) und
+Release stehen noch aus.
 
 ## Struktur
 

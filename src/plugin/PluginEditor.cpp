@@ -5,65 +5,454 @@
 
 namespace heptachord
 {
+namespace
+{
+constexpr int kWindowWidth = 1000;
+constexpr int kWindowHeight = 664;
+constexpr int kMargin = 12;
+constexpr int kGap = 8;
+constexpr int kHeaderHeight = 42;
+constexpr int kGlobalHeight = 98;
+constexpr int kVoicesHeight = 214;
+constexpr int kPanelPadding = 8;
+constexpr int kZoneTitleHeight = 14;
+
+juce::String stepId (int index, const char* suffix)
+{
+    return "s" + juce::String (index + 1) + "." + suffix;
+}
+
+juce::String voiceId (int index, const char* suffix)
+{
+    return "h" + juce::String (index + 1) + "." + suffix;
+}
+} // namespace
 
 Editor::Editor (Processor& processorToEdit)
     : AudioProcessorEditor (&processorToEdit), processor (processorToEdit)
 {
-    setSize (640, 360);
+    setLookAndFeel (&lookAndFeel);
+    standalone = processor.isStandalone();
 
-    // Nur im Standalone gibt es keinen Host-Transport.
-    if (processor.isStandalone())
+    buildControls();
+
+    addAndMakeVisible (resetButton);
+    resetButton.setTooltip ("Setzt das Raster am naechsten Step-Rand auf Step 1");
+    resetButton.onClick = [this] { processor.triggerReset(); };
+
+    if (standalone)
     {
         addAndMakeVisible (transportButton);
-        transportButton.onClick = [this] { processor.toggleStandaloneTransport(); };
+        transportButton.onClick = [this]
+        {
+            processor.toggleStandaloneTransport();
+            updateTransportButton();
+        };
 
         setWantsKeyboardFocus (true);
     }
+
+    updateTransportButton();
+    setSize (kWindowWidth, kWindowHeight);
 }
 
-Editor::~Editor() = default;
+Editor::~Editor()
+{
+    setLookAndFeel (nullptr);
+}
+
+juce::Slider& Editor::addKnob (const juce::String& paramId, const juce::String& caption)
+{
+    auto* slider = sliders.add (new juce::Slider());
+    slider->setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 48, 13);
+    slider->setPopupDisplayEnabled (false, false, this);
+    addAndMakeVisible (slider);
+
+    sliderAttachments.push_back (
+        std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+            processor.apvts, paramId, *slider));
+
+    addTooltipFromTable (*slider, paramId);
+
+    if (caption.isNotEmpty())
+        addCaptionAnchor (*slider, caption);
+
+    return *slider;
+}
+
+juce::ComboBox& Editor::addChoice (const juce::String& paramId, const juce::String& caption)
+{
+    auto* box = combos.add (new juce::ComboBox());
+    box->setJustificationType (juce::Justification::centredLeft);
+    addAndMakeVisible (box);
+
+    comboAttachments.push_back (
+        std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+            processor.apvts, paramId, *box));
+
+    addTooltipFromTable (*box, paramId);
+
+    if (caption.isNotEmpty())
+        addCaptionAnchor (*box, caption);
+
+    return *box;
+}
+
+juce::ToggleButton& Editor::addToggle (const juce::String& paramId, const juce::String& caption)
+{
+    auto* button = toggles.add (new juce::ToggleButton());
+    button->setButtonText (caption);
+    addAndMakeVisible (button);
+
+    buttonAttachments.push_back (
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            processor.apvts, paramId, *button));
+
+    addTooltipFromTable (*button, paramId);
+
+    return *button;
+}
+
+void Editor::addTooltipFromTable (juce::SettableTooltipClient& component, const juce::String& paramId)
+{
+    const int index = params::indexOf (paramId.toRawUTF8());
+
+    if (index < 0)
+        return;
+
+    const char* note = params::kParams[static_cast<std::size_t> (index)].note;
+
+    if (note != nullptr && *note != '\0')
+        component.setTooltip (juce::String::fromUTF8 (note));
+}
+
+void Editor::addCaptionAnchor (juce::Component& anchor, const juce::String& text)
+{
+    controlCaptions.push_back ({ &anchor, text });
+}
+
+void Editor::buildControls()
+{
+    rootBox = &addChoice ("root", "Grundton");
+    scaleBox = &addChoice ("scale", "Skala");
+    rateBox = &addChoice ("rate", "Rate");
+    directionBox = &addChoice ("direction", "Richtung");
+    swingKnob = &addKnob ("swing", "Swing");
+    slackKnob = &addKnob ("slack", "Slack");
+    harmVelocityKnob = &addKnob ("harm.velocity", "Vel H1-H3");
+    harmSpreadKnob = &addKnob ("harm.spread", "Spread");
+    latchButton = &addToggle ("latch", "LATCH");
+    outputBox = &addChoice ("output.mode", "Ausgabe");
+
+    thruEnableButton = &addToggle ("thru.enable", "AKTIV");
+    thruSnapButton = &addToggle ("thru.snap", "SNAP");
+    thruVelocityKnob = &addKnob ("thru.velocity", "");
+    thruChannelKnob = &addKnob ("thru.channel", "");
+
+    for (int voice = 0; voice < 3; ++voice)
+    {
+        auto& row = voices[static_cast<std::size_t> (voice)];
+
+        row.enable = &addToggle (voiceId (voice, "enable"), "AKTIV");
+        row.degree = &addKnob (voiceId (voice, "degree"), "");
+        row.octave = &addKnob (voiceId (voice, "octave"), "");
+        row.velocity = &addKnob (voiceId (voice, "velocity"), "");
+        row.follow = &addToggle (voiceId (voice, "follow"), "FOLGT");
+        row.gate = &addKnob (voiceId (voice, "gate"), "");
+        row.channel = &addKnob (voiceId (voice, "channel"), "");
+    }
+
+    const char* maskNames[4] = { "THR", "H1", "H2", "H3" };
+
+    for (int index = 0; index < 8; ++index)
+    {
+        auto& column = steps[static_cast<std::size_t> (index)];
+
+        column.active = &addToggle (stepId (index, "active"), "AN");
+        column.mode = &addChoice (stepId (index, "mode"), "");
+        column.offset = &addKnob (stepId (index, "offset"), "Offset");
+        column.velocity = &addKnob (stepId (index, "velocity"), "Velocity");
+        column.probability = &addKnob (stepId (index, "probability"), "Wahrsch.");
+        column.ratchet = &addKnob (stepId (index, "ratchet"), "Ratchet");
+
+        for (int voice = 0; voice < 4; ++voice)
+        {
+            const char* suffix = voice == 0 ? "v1" : voice == 1 ? "v2" : voice == 2 ? "v3" : "v4";
+            column.mask[static_cast<std::size_t> (voice)] =
+                &addToggle (stepId (index, suffix), maskNames[voice]);
+        }
+    }
+}
 
 bool Editor::keyPressed (const juce::KeyPress& key)
 {
-    if (processor.isStandalone() && key.isKeyCode (juce::KeyPress::spaceKey))
+    if (standalone && key.isKeyCode (juce::KeyPress::spaceKey))
     {
         processor.toggleStandaloneTransport();
+        updateTransportButton();
         return true;
     }
 
-    return false;
+    return juce::AudioProcessorEditor::keyPressed (key);
+}
+
+void Editor::updateTransportButton()
+{
+    if (! standalone)
+        return;
+
+    const bool playing = processor.isStandalonePlaying();
+    transportButton.setButtonText (playing ? "STOP" : "START");
+    transportButton.setToggleState (playing, juce::dontSendNotification);
 }
 
 void Editor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff14161a));
+    g.fillAll (HeptachordLookAndFeel::background());
 
-    auto area = getLocalBounds().reduced (24);
+    // Kopfzeile
+    {
+        auto area = headerArea;
 
-    g.setColour (juce::Colour (0xffe8e6e1));
-    g.setFont (juce::FontOptions (28.0f, juce::Font::bold));
-    g.drawText ("Heptachord", area.removeFromTop (40), juce::Justification::centredLeft);
+        g.setColour (HeptachordLookAndFeel::text());
+        g.setFont (juce::FontOptions (22.0f, juce::Font::bold));
+        g.drawText ("HEPTACHORD", area.removeFromTop (26), juce::Justification::centredLeft);
 
-    g.setColour (juce::Colour (0xff8b93a1));
-    g.setFont (juce::FontOptions (15.0f));
-    g.drawText (juce::String (params::kNumParameters) + " Parameter, schemaVersion "
-                    + juce::String (params::kSchemaVersion),
-                area.removeFromTop (24), juce::Justification::centredLeft);
+        g.setColour (HeptachordLookAndFeel::muted());
+        g.setFont (juce::FontOptions (11.0f));
+        g.drawText ("Stepwise Harmonizer - " + juce::String (params::kNumParameters) + " Parameter",
+                    area.removeFromTop (14), juce::Justification::centredLeft);
+    }
 
-    g.setFont (juce::FontOptions (14.0f));
-    g.drawText ("M2b - Step-Engine, Parameter und MIDI-Ausgabe sind angebunden.",
-                area.removeFromTop (22), juce::Justification::centredLeft);
+    const auto panel = [&g] (juce::Rectangle<int> area, const juce::String& title)
+    {
+        const auto bounds = area.toFloat();
 
-    if (processor.isStandalone())
-        g.drawText (processor.isStandalonePlaying() ? "Transport: laeuft (120 BPM)"
-                                                    : "Transport: gestoppt",
-                    area.removeFromTop (22), juce::Justification::centredLeft);
+        g.setColour (HeptachordLookAndFeel::panel());
+        g.fillRoundedRectangle (bounds, 6.0f);
+
+        g.setColour (HeptachordLookAndFeel::line());
+        g.drawRoundedRectangle (bounds.reduced (0.5f), 6.0f, 1.0f);
+
+        g.setColour (HeptachordLookAndFeel::muted());
+        g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+        g.drawText (title,
+                    area.reduced (kPanelPadding, 3).removeFromTop (kZoneTitleHeight),
+                    juce::Justification::centredLeft);
+    };
+
+    panel (globalArea, "GLOBAL");
+    panel (voicesArea, "STIMMEN");
+    panel (stepsArea, "STEPS");
+
+    g.setFont (juce::FontOptions (10.0f));
+
+    for (const auto& caption : staticCaptions)
+    {
+        g.setColour (HeptachordLookAndFeel::muted());
+        g.drawText (caption.text, caption.area, juce::Justification::centredLeft);
+    }
+
+    // Kleiner Akzent unter dem Titel.
+    g.setColour (HeptachordLookAndFeel::accent());
+    g.fillRect (headerArea.getX(), headerArea.getBottom() + 1, 42, 2);
 }
 
 void Editor::resized()
 {
-    if (processor.isStandalone())
-        transportButton.setBounds (24, getHeight() - 24 - 28, 260, 28);
+    staticCaptions.clear();
+
+    auto bounds = getLocalBounds().reduced (kMargin);
+
+    headerArea = bounds.removeFromTop (kHeaderHeight);
+    bounds.removeFromTop (kGap);
+    globalArea = bounds.removeFromTop (kGlobalHeight);
+    bounds.removeFromTop (kGap);
+    voicesArea = bounds.removeFromTop (kVoicesHeight);
+    bounds.removeFromTop (kGap);
+    stepsArea = bounds;
+
+    layoutHeader (headerArea);
+    layoutGlobal (globalArea);
+    layoutVoices (voicesArea);
+    layoutSteps (stepsArea);
+
+    for (const auto& entry : controlCaptions)
+    {
+        if (entry.anchor == nullptr)
+            continue;
+
+        const auto anchor = entry.anchor->getBounds();
+        staticCaptions.push_back ({ { anchor.getX(), anchor.getY() - 12, anchor.getWidth(), 11 },
+                                    entry.text });
+    }
+}
+
+void Editor::layoutHeader (juce::Rectangle<int> area)
+{
+    auto buttons = area;
+
+    resetButton.setBounds (buttons.removeFromRight (84).reduced (2, 6));
+
+    if (standalone)
+        transportButton.setBounds (buttons.removeFromRight (112).reduced (2, 6));
+}
+
+void Editor::layoutGlobal (juce::Rectangle<int> area)
+{
+    auto inner = area.reduced (kPanelPadding);
+    inner.removeFromTop (kZoneTitleHeight);
+
+    constexpr int count = 10;
+    const int cellWidth = inner.getWidth() / count;
+
+    const auto cellAt = [&inner, cellWidth] (int index)
+    {
+        const int x = inner.getX() + index * cellWidth;
+        const int width = index == count - 1 ? inner.getRight() - x : cellWidth;
+        return juce::Rectangle<int> (x, inner.getY(), width, inner.getHeight()).reduced (3, 0);
+    };
+
+    const auto placeKnob = [] (juce::Slider* knob, juce::Rectangle<int> cell)
+    {
+        knob->setBounds (cell.getX(), cell.getY() + 12, cell.getWidth(), 54);
+    };
+
+    const auto placeChoice = [] (juce::ComboBox* box, juce::Rectangle<int> cell)
+    {
+        box->setBounds (cell.getX(), cell.getY() + 26, cell.getWidth(), 26);
+    };
+
+    const auto placeToggle = [] (juce::ToggleButton* button, juce::Rectangle<int> cell)
+    {
+        button->setBounds (cell.getX(), cell.getCentreY() - 11, cell.getWidth(), 22);
+    };
+
+    placeChoice (rootBox, cellAt (0));
+    placeChoice (scaleBox, cellAt (1));
+    placeChoice (rateBox, cellAt (2));
+    placeChoice (directionBox, cellAt (3));
+    placeKnob (swingKnob, cellAt (4));
+    placeKnob (slackKnob, cellAt (5));
+    placeKnob (harmVelocityKnob, cellAt (6));
+    placeKnob (harmSpreadKnob, cellAt (7));
+    placeToggle (latchButton, cellAt (8));
+    placeChoice (outputBox, cellAt (9));
+}
+
+void Editor::layoutVoices (juce::Rectangle<int> area)
+{
+    auto inner = area.reduced (kPanelPadding);
+    inner.removeFromTop (kZoneTitleHeight);
+
+    constexpr int nameWidth = 56;
+    constexpr int columnCount = 7;
+    const char* titles[columnCount] = { "AKTIV", "GRAD", "OKTAVE", "VELOCITY",
+                                        "FOLGT", "GATE", "KANAL" };
+
+    auto header = inner.removeFromTop (12);
+    auto headerCells = header.withTrimmedLeft (nameWidth);
+    const int columnWidth = headerCells.getWidth() / columnCount;
+
+    const auto cellAt = [] (juce::Rectangle<int> row, int index, int width)
+    {
+        return row.withX (row.getX() + index * width).withWidth (width).reduced (3, 0);
+    };
+
+    for (int i = 0; i < columnCount; ++i)
+        staticCaptions.push_back ({ cellAt (headerCells, i, columnWidth), titles[i] });
+
+    const auto placeKnob = [] (juce::Slider* knob, juce::Rectangle<int> cell, int height)
+    {
+        knob->setBounds (cell.getX(), cell.getY(), cell.getWidth(), height);
+    };
+
+    const auto placeToggle = [] (juce::ToggleButton* button, juce::Rectangle<int> cell)
+    {
+        button->setBounds (cell.getX(), cell.getCentreY() - 10, cell.getWidth(), 20);
+    };
+
+    const char* rowNames[4] = { "THRU", "H1", "H2", "H3" };
+    const int rowHeight = inner.getHeight() / 4;
+    const int knobHeight = rowHeight;
+
+    // Thru: nur Aktiv, Snap, Velocity und Kanal (Gate ist fix, kein Grad/Oktave/Folgt).
+    {
+        auto row = inner.removeFromTop (rowHeight);
+        staticCaptions.push_back ({ { row.getX(), row.getY(), nameWidth - 6, rowHeight },
+                                    rowNames[0] });
+
+        auto cellsArea = row.withTrimmedLeft (nameWidth);
+
+        placeToggle (thruEnableButton, cellAt (cellsArea, 0, columnWidth));
+        placeToggle (thruSnapButton, cellAt (cellsArea, 1, columnWidth));
+        placeKnob (thruVelocityKnob, cellAt (cellsArea, 2, columnWidth), knobHeight);
+        placeKnob (thruChannelKnob, cellAt (cellsArea, 6, columnWidth), knobHeight);
+    }
+
+    for (int voice = 0; voice < 3; ++voice)
+    {
+        auto row = inner.removeFromTop (rowHeight);
+        staticCaptions.push_back ({ { row.getX(), row.getY(), nameWidth - 6, rowHeight },
+                                    rowNames[voice + 1] });
+
+        auto& controls = voices[static_cast<std::size_t> (voice)];
+        auto cellsArea = row.withTrimmedLeft (nameWidth);
+
+        placeToggle (controls.enable, cellAt (cellsArea, 0, columnWidth));
+        placeKnob (controls.degree, cellAt (cellsArea, 1, columnWidth), knobHeight);
+        placeKnob (controls.octave, cellAt (cellsArea, 2, columnWidth), knobHeight);
+        placeKnob (controls.velocity, cellAt (cellsArea, 3, columnWidth), knobHeight);
+        placeToggle (controls.follow, cellAt (cellsArea, 4, columnWidth));
+        placeKnob (controls.gate, cellAt (cellsArea, 5, columnWidth), knobHeight);
+        placeKnob (controls.channel, cellAt (cellsArea, 6, columnWidth), knobHeight);
+    }
+}
+
+void Editor::layoutSteps (juce::Rectangle<int> area)
+{
+    auto inner = area.reduced (kPanelPadding);
+    inner.removeFromTop (kZoneTitleHeight);
+
+    const int columnWidth = inner.getWidth() / 8;
+
+    for (int index = 0; index < 8; ++index)
+    {
+        auto column = inner.withX (inner.getX() + index * columnWidth).withWidth (columnWidth)
+                           .reduced (4, 0);
+
+        auto& controls = steps[static_cast<std::size_t> (index)];
+
+        auto title = column.removeFromTop (14);
+        staticCaptions.push_back ({ title, "S" + juce::String (index + 1) });
+
+        controls.active->setBounds (column.removeFromTop (19));
+        column.removeFromTop (4);
+        controls.mode->setBounds (column.removeFromTop (22));
+        column.removeFromTop (6);
+
+        const auto placePair = [&column] (juce::Slider* left, juce::Slider* right)
+        {
+            auto row = column.removeFromTop (66);
+            const int half = row.getWidth() / 2;
+
+            left->setBounds (row.getX() + 2, row.getY() + 12, half - 4, 54);
+            right->setBounds (row.getX() + half + 2, row.getY() + 12, half - 4, 54);
+        };
+
+        placePair (controls.offset, controls.velocity);
+        column.removeFromTop (5);
+        placePair (controls.probability, controls.ratchet);
+        column.removeFromTop (6);
+
+        auto maskRow = column.removeFromTop (19);
+        const int maskWidth = maskRow.getWidth() / 4;
+
+        for (int voice = 0; voice < 4; ++voice)
+            controls.mask[static_cast<std::size_t> (voice)]->setBounds (
+                maskRow.getX() + voice * maskWidth + 1, maskRow.getY(), maskWidth - 2, 19);
+    }
 }
 
 } // namespace heptachord
