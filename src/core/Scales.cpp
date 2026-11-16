@@ -50,20 +50,21 @@ int degreeToNote (int root, int degree, Scale scale) noexcept
     return std::clamp (root + degreeToSemitone (degree, scale), 0, 127);
 }
 
-int snapToScale (int note, Scale scale) noexcept
+int snapToScale (int note, Scale scale, int root) noexcept
 {
     const auto& table = scaleTable (scale);
     const int clamped = std::clamp (note, 0, 127);
-    const int baseOctave = (clamped / 12) * 12;
+    const int rootPitch = ((root % 12) + 12) % 12;
 
     int best = clamped;
     int bestDistance = 128;
 
-    for (int octaveOffset = -12; octaveOffset <= 12; octaveOffset += 12)
+    // Die Oktaven -3 ... 10 decken den gesamten MIDI-Bereich ab.
+    for (int octave = -3; octave <= 10; ++octave)
     {
         for (const int degreeSemitone : table)
         {
-            const int candidate = baseOctave + octaveOffset + degreeSemitone;
+            const int candidate = rootPitch + 12 * octave + degreeSemitone;
             if (candidate < 0 || candidate > 127)
                 continue;
 
@@ -77,6 +78,25 @@ int snapToScale (int note, Scale scale) noexcept
     }
 
     return best;
+}
+
+int baseDegree (int note, int root, Scale scale) noexcept
+{
+    const auto& table = scaleTable (scale);
+    const int snapped = snapToScale (note, scale, root);
+    const int rootPitch = ((root % 12) + 12) % 12;
+
+    const int relative = snapped - rootPitch;
+    const int octave = floorDiv (relative, 12);
+    const int inner = relative - 12 * octave;   // 0 ... 11
+
+    // Groesster Skalengrad, der nicht ueber dem Ton liegt.
+    int index = 0;
+    for (int i = 0; i < kDegreesPerOctave; ++i)
+        if (table[static_cast<std::size_t> (i)] <= inner)
+            index = i;
+
+    return kDegreesPerOctave * octave + index;
 }
 
 } // namespace heptachord

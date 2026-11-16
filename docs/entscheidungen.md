@@ -149,3 +149,18 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
 60. **Präzisierungen** — Die in der Spezifikation mit `[Präzisierung]`
     markierten Festlegungen gelten als verbindlich, bis sie hier bestätigt oder
     geändert werden.
+
+## Runde 7 (M1 — Step-Engine)
+
+61. **Velocity-Gruppenfaktoren** — `thru.velocity` wirkt auf die Thru-Stimme,
+    `harm.velocity` auf H1–H3. Beide bilden die Velocity-CV-Eingänge des
+    Originals ab (`CV_In_ThruVel`, `CV_In_HarmVel`). `hN.velocity` ist der
+    zusätzliche Stimmentrim und wirkt nur bei `follow = false`. Die Formel in
+    `docs/03-spezifikation.md` 6.2 war zuvor unvollständig.
+62. **Basisgrad-Nullpunkt** — Der diatonische Grad zählt vom **tiefsten
+    Vorkommen des Grundtons** (MIDI `root … root+11`). Der absolute Wert ist
+    beliebig, solange die Rechnung konsistent bleibt; festgelegt wurde er
+    deshalb, damit die Python-Referenz (Nr. 47) denselben Nullpunkt benutzt.
+63. **PingPong** — Die Folge startet beim ersten aktiven Step und wiederholt
+    die Endpunkte nicht: `0 … k−1, k−2 … 1, 0, 1 …`. Bei zwei aktiven Steps
+    wechselt die Richtung, bei einem bleibt der Cursor stehen.

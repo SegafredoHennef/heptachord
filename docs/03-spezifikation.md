@@ -162,8 +162,16 @@ index     = größtes i mit skala[i] ≤ inner      (gerastet, Gleichstand → t
 baseGrad  = 7 · oktav + index
 ```
 
+Der Grad zählt vom **tiefsten Vorkommen des Grundtons** (MIDI `root … root+11`).
+Grad 0 ist damit der Grundton selbst, Grad 7 eine Oktave darüber.
+
 Beispiel: Grundton C, Skala Dur, Eingangsnote 63 (Es) → gerastet auf 62 (D) →
-`inner = 2` → `index = 1` → `baseGrad = 1` (die zweite Stufe, D).
+`rel = 62 − 0 = 62` → `oktav = floorDiv(62, 12) = 5` → `inner = 2` →
+`index = 1` → `baseGrad = 7·5 + 1 = 36`.
+
+Der absolute Wert des Basisgrads ist beliebig, solange er konsistent ist: Die
+Pitch-Rechnung in 3.5 addiert dazu `hN.degree` und `sN.offset`, sodass sich
+Octaven und Bezugston am Ende aufheben.
 
 ### 3.4 Rasten (Snap)
 
@@ -358,12 +366,19 @@ multipliziert und auf 1…127 geklemmt.
 v_in      = Note-On-Velocity (1…127)
 f_step    = sN.velocity / 100                      (0…2)
 f_thru    = thru.velocity / 100                    (0…2)
+f_harm    = harm.velocity / 100                    (0…2)
 f_voice(i)= h_i.follow ? 1 : h_i.velocity / 100    (0…2)
 f_spread(i)= 1 − spread · (i−1)/2                  (i = 1…3)
 
 v_thru = clamp(round(v_in · f_thru · f_step), 1, 127)
-v_h(i) = clamp(round(v_in · f_voice(i) · f_spread(i) · f_step), 1, 127)
+v_h(i) = clamp(round(v_in · f_harm · f_voice(i) · f_spread(i) · f_step), 1, 127)
 ```
+
+- `thru.velocity` und `harm.velocity` sind die **Gruppenfaktoren**: der erste
+  für die Thru-Stimme, der zweite für H1–H3. Sie bilden die beiden
+  Velocity-CV-Eingänge des Originals ab (`CV_In_ThruVel`, `CV_In_HarmVel`).
+- `h_i.velocity` ist der **Stimmentrim** und wirkt nur, wenn
+  `h_i.follow = false` ist.
 
 - `harm.spread` wirkt **nur** auf H1–H3. Default 0.3 → 100 % / 85 % / 70 %
   (Entscheidung 35). Bei `spread = 1` wird H3 zu 0 % (stumm) — das ist gewollt
@@ -494,15 +509,20 @@ Die acht CV-Ausgänge (Pitch/Gate pro Stimme) werden durch MIDI-Out auf
 
 ---
 
-## 12. Abweichungen zur aktuellen Implementierung (M1-Aufgaben)
+## 12. Abweichungen zur aktuellen Implementierung
 
-| # | Abweichung | Zielzustand | M1-Aufgabe |
+| # | Abweichung | Zielzustand | Stand |
 |---|---|---|---|
-| A1 | `snapToScale` rastet wurzelunabhängig (Root C) | root-relative Rastung | Signatur `snapToScale(note, scale, root)`; Tests anpassen |
-| A2 | `h_i.follow` ist noch nicht implementiert | Velocity-Formel aus 6.2 | Core-Funktion + Test |
-| A3 | Step-Engine fehlt vollständig | Abschnitt 4/5 | `StepClock`/`StepEngine` |
-| A4 | Thru-Gate ist nicht konfigurierbar | 100 % fix | Festwert im Core, dokumentiert |
-| A5 | Kein Velocity-Faktor pro Stimme im Core | Abschnitt 6 | im Core abbilden |
+| A1 | `snapToScale` rastet wurzelunabhängig (Root C) | root-relative Rastung | **erledigt in M1**: `snapToScale(note, scale, root)` |
+| A2 | `h_i.follow` ist noch nicht implementiert | Velocity-Formel aus 6.2 | **erledigt in M1** |
+| A3 | Step-Engine fehlt vollständig | Abschnitt 4/5 | **erledigt in M1**: `StepClock`, `StepSequencer`, `StepPlanner` |
+| A4 | Thru-Gate ist nicht konfigurierbar | 100 % fix | offen (bewusst so, siehe 6.3) |
+| A5 | Kein Velocity-Faktor pro Stimme im Core | Abschnitt 6 | **erledigt in M1** |
+
+Der Core enthält damit `StepClock` (Timing), `StepSequencer` (Traversal) und
+`StepPlanner` (Planung + Voice-Mathematik). Was noch fehlt, ist die
+Ereignis-Schicht: der Block-Loop, der Slots und Gates in MIDI-Events mit
+Sample-Offset übersetzt (M2/M3).
 
 ---
 

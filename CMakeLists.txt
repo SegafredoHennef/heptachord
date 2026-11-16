@@ -18,6 +18,9 @@ add_subdirectory(extern/JUCE)
 # --- Core: Domaenenlogik ohne JUCE (ADR 0007) -------------------------------
 add_library(heptachord_core STATIC
     src/core/Scales.cpp
+    src/core/StepClock.cpp
+    src/core/StepSequencer.cpp
+    src/core/StepPlanner.cpp
 )
 target_include_directories(heptachord_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(heptachord_core PUBLIC cxx_std_20)
@@ -83,6 +86,9 @@ enable_testing()
 add_executable(heptachord_tests
     tests/test_scales.cpp
     tests/test_parameters.cpp
+    tests/test_stepclock.cpp
+    tests/test_sequencer.cpp
+    tests/test_planner.cpp
 )
 target_link_libraries(heptachord_tests PRIVATE heptachord_core Catch2::Catch2WithMain)
 target_compile_definitions(heptachord_tests PRIVATE

@@ -47,14 +47,40 @@ TEST_CASE ("Klemmung auf 0...127", "[scales]")
 
 TEST_CASE ("Rastung", "[scales]")
 {
-    REQUIRE (snapToScale (60, Scale::Dur) == 60);
-    REQUIRE (snapToScale (62, Scale::Dur) == 62);
-    REQUIRE (snapToScale (61, Scale::Dur) == 60);   // Gleichstand -> tieferer Ton
-    REQUIRE (snapToScale (61, Scale::Lydisch) == 60);
-    REQUIRE (snapToScale (63, Scale::Dur) == 62);   // ebenfalls Gleichstand 62/64
-    REQUIRE (snapToScale (64, Scale::Dur) == 64);
-    REQUIRE (snapToScale (0, Scale::Dur) == 0);
-    REQUIRE (snapToScale (127, Scale::Dur) == 127);
+    REQUIRE (snapToScale (60, Scale::Dur, 0) == 60);
+    REQUIRE (snapToScale (62, Scale::Dur, 0) == 62);
+    REQUIRE (snapToScale (61, Scale::Dur, 0) == 60);   // Gleichstand -> tieferer Ton
+    REQUIRE (snapToScale (61, Scale::Lydisch, 0) == 60);
+    REQUIRE (snapToScale (63, Scale::Dur, 0) == 62);   // ebenfalls Gleichstand 62/64
+    REQUIRE (snapToScale (64, Scale::Dur, 0) == 64);
+    REQUIRE (snapToScale (0, Scale::Dur, 0) == 0);
+    REQUIRE (snapToScale (127, Scale::Dur, 0) == 127);
+}
+
+TEST_CASE ("Rastung ist am Grundton verankert", "[scales]")
+{
+    // Cis-Dur: C#(1), D#(3), E#(5), F(6), G#(8), A#(10), H#(11).
+    REQUIRE (snapToScale (61, Scale::Dur, 1) == 61);   // Cis liegt in der Skala
+    REQUIRE (snapToScale (63, Scale::Dur, 1) == 63);   // Dis liegt in der Skala
+    REQUIRE (snapToScale (60, Scale::Dur, 1) == 60);   // H# liegt in der Skala
+    REQUIRE (snapToScale (59, Scale::Dur, 1) == 58);   // H -> Gis (Gleichstand, tiefer)
+
+    // Gleicher Ton, anderer Grundton: das Ergebnis verschiebt sich mit.
+    REQUIRE (snapToScale (61, Scale::Dur, 0) == 60);   // Cis -> D in C-Dur (Gleichstand)
+}
+
+TEST_CASE ("Basisgrad", "[scales]")
+{
+    // Der Grad zaehlt vom tiefsten Vorkommen des Grundtons (MIDI root ... root+11).
+    REQUIRE (baseDegree (60, 0, Scale::Dur) == 35);   // C4  = 5 Oktaven ueber C0
+    REQUIRE (baseDegree (62, 0, Scale::Dur) == 36);   // D4
+    REQUIRE (baseDegree (64, 0, Scale::Dur) == 37);   // E4
+    REQUIRE (baseDegree (72, 0, Scale::Dur) == 42);   // C5  = 6 Oktaven
+    REQUIRE (baseDegree (59, 0, Scale::Dur) == 34);   // H3
+    REQUIRE (baseDegree (61, 0, Scale::Dur) == 35);   // Es rastet bei Gleichstand auf C
+
+    // In Cis-Dur ist C die siebte Stufe der naechsten Oktave.
+    REQUIRE (baseDegree (60, 1, Scale::Dur) == 34);
 }
 
 TEST_CASE ("Jede Stimme bleibt in der Skala", "[scales][property]")

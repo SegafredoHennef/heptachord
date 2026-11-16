@@ -35,8 +35,15 @@ int degreeToSemitone (int degree, Scale scale) noexcept;
 // Grundton (0...11) + Grad -> MIDI-Note, geklemmt auf 0...127.
 int degreeToNote (int root, int degree, Scale scale) noexcept;
 
-// Chromatischer Ton -> naechster Skalenton (Rasterung). Bei Gleichstand
+// Chromatischer Ton -> naechster Skalenton (Rasterung). Die Skala ist am
+// Grundton verankert: Kandidaten sind root + 12*k + skala[i]. Bei Gleichstand
 // gewinnt der tiefere Kandidat. Ergebnis 0...127.
-int snapToScale (int note, Scale scale) noexcept;
+int snapToScale (int note, Scale scale, int root) noexcept;
+
+// Diatonischer Grad einer Note, bezogen auf den Grundton (0...11).
+// Der Grad zaehlt vom tiefsten Vorkommen des Grundtons (MIDI root ... root+11):
+// Grad 0 ist der Grundton, Grad 7 eine Oktave hoeher. Die Note wird dabei auf
+// den naechsten Skalenton gerastet (Gleichstand -> tieferer Ton).
+int baseDegree (int note, int root, Scale scale) noexcept;
 
 } // namespace heptachord
