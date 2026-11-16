@@ -9,10 +9,12 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: M3 — Editor.** Signalweg (M2b) und Oberfläche sind fertig: alle 115
-Parameter liegen auf einer Seite (globale Leiste, Stimmen, acht Step-Spalten),
-das Erscheinungsbild ist ein eigenes dunkles Look-and-Feel. Presets (M5) und
-Release stehen noch aus.
+**Status: M5 - Presets.** Signalweg (M2b), Oberfläche (M3) und Presets sind
+fertig: alle 115 Parameter liegen auf einer Seite (globale Leiste, Stimmen,
+acht Step-Spalten), das Erscheinungsbild ist ein eigenes dunkles
+Look-and-Feel, acht Factory-Presets (je eins pro Skala) lassen sich aus der
+Kopfzeile laden. Der Standalone hat eine QWERTZ-freundliche Mini-Klaviatur
+(A-K = Noten, Y/Z/X = Oktave, Leertaste = Transport). Release steht noch aus.
 
 ## Struktur
 
@@ -44,8 +46,10 @@ MIDI-Ausgang des Plugins auf ein Ziel-Instrument routen (Live: „MIDI To",
 Reaper: Routing-Matrix, Bitwig: Note-Effekt-Kette, Cubase: MIDI-Send). Der
 Audio-Ausgang von Heptachord ist absichtlich still.
 
-**Standalone:** Note über die MIDI-Eingabe spielen, Leertaste oder der Knopf
-startet und stoppt den internen Transport (120 BPM).
+**Standalone:** Note über die eingebaute Mini-Klaviatur spielen (A-K = C bis C
+einer Oktave, Y oder Z = Oktave runter, X = Oktave rauf, Leertaste =
+Transport), alternativ über MIDI-Eingabe. Leertaste oder der Knopf startet und
+stoppt den internen Transport (120 BPM).
 
 ## Bauen (in M0 verifiziert)
 

@@ -229,3 +229,31 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Ringbreite 0.16 → 0.15 des Radius, Reglerhöhe 54 px; die Tooltips kommen
     direkt aus `parameters.toml` (`note`-Feld), damit die Doku nicht doppelt
     gepflegt wird.
+
+## Runde 11 (M5 - Presets + QWERTZ-Keyboard)
+
+73. **QWERTZ-Mini-Klaviatur im Standalone** - A-K spielen C bis C einer Oktave
+    (weisse Tasten, C-Dur), Y oder Z senkt die Oktave, X hebt sie (klemmt auf
+    -2..+2), Leertaste ist der Transport. JUCE liefert auf Windows den
+    Zeichencode der Beschriftung, daher funktioniert das Mapping layout-
+    unabhaengig: QWERTY und QWERTZ brauchen keine Erkennung. Nur die
+    Plugin-Schicht; der Core kennt keinen Unterschied (ADR 0007).
+74. **Tastatur-Noten laufen als MIDI in den Eingangspuffer** - Der Editor
+    injiziert Note-On/Off in einen mutex-geschuetzten MidiBuffer im Processor;
+    processBlock mischt ihn vor der Bridge in midiMessages. Der Guard
+    isStandalone() stellt sicher, dass im VST3 nichts ankommt. Note-Off wird
+    ueber keyStateChanged + isKeyCurrentlyDown geliefert, Fokusverlust und
+    Destruktor schicken alle Noten aus.
+75. **Preset-Selektor in der Kopfzeile** - Eine Combo mit den 8 Factory-
+    Presets; die Auswahl laedt per setValueNotifyingHost in das APVTS
+    (Trigger reset ausgenommen, Nr. 67) und schickt danach All-Notes-Off
+    (Spezifikation 8.2/8.3). Kein doppelter State: Quelle bleibt das APVTS.
+76. **Weg ueber Normalisierung** - Presets speichern reale Parameterwerte
+    (Choice = Index, Bool = 0/1); beim Laden rechnet
+    Preset::normalizedValues() in die APVTS-Form 0..1 um. Ein Roundtrip-Test
+    sichert Wert -> normalisiert -> Wert ab.
+77. **Factory-Preset-Suchpfade** - HEPTACHORD_PRESETS_DIR (Tests), sonst
+    Arbeitsverzeichnis/presets, Binary-Verzeichnis/presets und dessen
+    Elternverzeichnis/presets (der Standalone liegt in Release/Standalone,
+    die Dateien in Release/presets). Schlecht geladene Factory-Presets werden
+    still uebersprungen; der Editor zeigt die gefundenen Namen.

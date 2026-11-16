@@ -101,5 +101,6 @@ _Avoid_: Routing, Kanalmodus, Split
 
 **Preset**:
 Ein vollständiger, benannter Parametersatz, gespeichert als
-`.Heptachord`-Datei.
+`.heptachord`-Datei (JSON, `schemaVersion` 1). Choice-Parameter liegen als
+Index, Bool als 0/1, der Trigger `reset` ist ausgenommen.
 _Avoid_: Patch, Sound, Bank

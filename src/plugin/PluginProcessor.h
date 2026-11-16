@@ -7,6 +7,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <atomic>
+#include <mutex>
 
 namespace heptachord
 {
@@ -55,6 +56,16 @@ public:
     // aus (Entscheidung 67).
     void triggerReset() noexcept { m_bridge.requestReset(); }
 
+    // QWERTZ-Mini-Klaviatur des Standalones (nur Plugin-Schicht, ADR 0007).
+    // Die Noten landen in einem Puffer und werden im processBlock in den
+    // Eingangspuffer gemischt.
+    void injectKeyboardNoteOn (int noteNumber, int velocity);
+    void injectKeyboardNoteOff (int noteNumber);
+
+    // Preset-Wechsel aus dem Editor: klingende Noten sofort beenden
+    // (Spezifikation 8.2/8.3).
+    void notifyPresetChanged() { m_bridge.requestAllNotesOff(); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -66,6 +77,9 @@ private:
 
     std::atomic<bool> m_standalonePlaying { true };
     double m_standalonePpq = 0.0;
+
+    juce::MidiBuffer m_keyboardMidi;
+    std::mutex m_keyboardMutex;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Processor)
 };

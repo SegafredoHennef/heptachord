@@ -1,6 +1,7 @@
 #include "plugin/PluginEditor.h"
 
 #include "core/ParameterTable.h"
+#include "plugin/ComputerKeyboard.h"
 #include "plugin/PluginProcessor.h"
 
 namespace heptachord
@@ -36,6 +37,19 @@ Editor::Editor (Processor& processorToEdit)
 
     buildControls();
 
+    factoryPresets = Preset::factoryPresets();
+
+    presetBox = combos.add (new juce::ComboBox());
+    presetBox->setJustificationType (juce::Justification::centredLeft);
+    presetBox->setTooltip ("Factory-Preset laden");
+    addAndMakeVisible (presetBox);
+
+    for (const auto& preset : factoryPresets)
+        presetBox->addItem (preset.getName(), presetBox->getNumItems() + 1);
+
+    presetBox->setSelectedItemIndex (-1, juce::dontSendNotification);
+    presetBox->onChange = [this] { applySelectedPreset(); };
+
     addAndMakeVisible (resetButton);
     resetButton.setTooltip ("Setzt das Raster am naechsten Step-Rand auf Step 1");
     resetButton.onClick = [this] { processor.triggerReset(); };
@@ -58,6 +72,10 @@ Editor::Editor (Processor& processorToEdit)
 
 Editor::~Editor()
 {
+    if (standalone)
+        for (const auto& entry : heldNotes)
+            processor.injectKeyboardNoteOff (entry.second);
+
     setLookAndFeel (nullptr);
 }
 
@@ -187,14 +205,87 @@ void Editor::buildControls()
 
 bool Editor::keyPressed (const juce::KeyPress& key)
 {
-    if (standalone && key.isKeyCode (juce::KeyPress::spaceKey))
+    if (standalone)
     {
-        processor.toggleStandaloneTransport();
-        updateTransportButton();
-        return true;
+        const int code = key.getKeyCode();
+        const auto action = mapKey (code, keyboardOctave);
+
+        // Wiederholte Key-Down-Events beim Halten einer Taste ignorieren.
+        if (action.kind != KeyAction::Kind::none && pressedKeys.find (code) == pressedKeys.end())
+        {
+            pressedKeys.insert (code);
+
+            switch (action.kind)
+            {
+                case KeyAction::Kind::note:
+                    heldNotes[code] = action.note;
+                    processor.injectKeyboardNoteOn (action.note, 100);
+                    return true;
+
+                case KeyAction::Kind::octaveDown:
+                    keyboardOctave = juce::jmax (kMinOctave, keyboardOctave - 1);
+                    return true;
+
+                case KeyAction::Kind::octaveUp:
+                    keyboardOctave = juce::jmin (kMaxOctave, keyboardOctave + 1);
+                    return true;
+
+                case KeyAction::Kind::transport:
+                    processor.toggleStandaloneTransport();
+                    updateTransportButton();
+                    return true;
+
+                case KeyAction::Kind::none:
+                    break;
+            }
+        }
     }
 
     return juce::AudioProcessorEditor::keyPressed (key);
+}
+
+bool Editor::keyStateChanged (bool isKeyDown)
+{
+    if (! standalone || isKeyDown)
+        return juce::AudioProcessorEditor::keyStateChanged (isKeyDown);
+
+    // Beim Loslassen kann juce nicht sagen, welche Taste es war; daher alle
+    // gehaltenen Tasten pruefen, ob sie physisch noch gedrueckt sind.
+    bool used = false;
+
+    for (auto it = pressedKeys.begin(); it != pressedKeys.end();)
+    {
+        const int code = *it;
+
+        if (juce::KeyPress::isKeyCurrentlyDown (code))
+        {
+            ++it;
+            continue;
+        }
+
+        if (const auto found = heldNotes.find (code); found != heldNotes.end())
+        {
+            processor.injectKeyboardNoteOff (found->second);
+            heldNotes.erase (found);
+        }
+
+        it = pressedKeys.erase (it);
+        used = true;
+    }
+
+    return used;
+}
+
+void Editor::focusLost (FocusChangeType)
+{
+    if (! standalone)
+        return;
+
+    for (const auto& entry : heldNotes)
+        processor.injectKeyboardNoteOff (entry.second);
+
+    heldNotes.clear();
+    pressedKeys.clear();
 }
 
 void Editor::updateTransportButton()
@@ -205,6 +296,38 @@ void Editor::updateTransportButton()
     const bool playing = processor.isStandalonePlaying();
     transportButton.setButtonText (playing ? "STOP" : "START");
     transportButton.setToggleState (playing, juce::dontSendNotification);
+}
+
+void Editor::applySelectedPreset()
+{
+    const int index = presetBox->getSelectedItemIndex();
+
+    if (index < 0 || index >= static_cast<int> (factoryPresets.size()))
+        return;
+
+    applyPreset (factoryPresets[static_cast<std::size_t> (index)]);
+}
+
+void Editor::applyPreset (const Preset& preset)
+{
+    const auto normalized = preset.normalizedValues();
+
+    for (int i = 0; i < params::kNumParameters; ++i)
+    {
+        if (i == params::id_reset) // Trigger wird nicht gespeichert (Nr. 67).
+            continue;
+
+        const auto& p = params::kParams[static_cast<std::size_t> (i)];
+        auto* parameter = processor.apvts.getParameter (p.id);
+
+        if (parameter == nullptr)
+            continue;
+
+        parameter->setValueNotifyingHost (normalized[static_cast<std::size_t> (i)]);
+    }
+
+    // Preset-Wechsel beendet klingende Noten sofort (Spezifikation 8.2/8.3).
+    processor.notifyPresetChanged();
 }
 
 void Editor::paint (juce::Graphics& g)
@@ -221,8 +344,12 @@ void Editor::paint (juce::Graphics& g)
 
         g.setColour (HeptachordLookAndFeel::muted());
         g.setFont (juce::FontOptions (11.0f));
-        g.drawText ("Stepwise Harmonizer - " + juce::String (params::kNumParameters) + " Parameter",
-                    area.removeFromTop (14), juce::Justification::centredLeft);
+        juce::String subtitle = "Stepwise Harmonizer - " + juce::String (params::kNumParameters) + " Parameter";
+
+        if (standalone)
+            subtitle += "  |  Tastatur A-K, Y/Z Oktave, Leertaste Start/Stop";
+
+        g.drawText (subtitle, area.removeFromTop (14), juce::Justification::centredLeft);
     }
 
     const auto panel = [&g] (juce::Rectangle<int> area, const juce::String& title)
@@ -297,6 +424,8 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
 
     if (standalone)
         transportButton.setBounds (buttons.removeFromRight (112).reduced (2, 6));
+
+    presetBox->setBounds (buttons.removeFromRight (200).reduced (2, 6));
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)

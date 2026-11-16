@@ -542,6 +542,10 @@ Blocks.
   keinen Host, dessen ppq überschreiben könnte.
 - Eingebauter Test-Synth: 4-stimmig, Sägezahn, Tiefpass, ADSR (Entscheidung 69).
   Er spielt genau die vier Stimmen, die der Core auf vier Kanälen ausgibt.
+- Eingebaute Mini-Klaviatur (Entscheidung 73): A–K = C bis C einer Oktave,
+  Y oder Z = Oktave runter, X = Oktave rauf, Leertaste = Transport. Das
+  Mapping folgt dem Zeichencode der Beschriftung und funktioniert so auf
+  QWERTY und QWERTZ. MIDI-Eingänge bleiben nebenher unterstützt.
 - MIDI-Clock-Eingang erst ab M6.
 - Der Standalone nutzt denselben Core und denselben Editor. Nur der
   Standalone-Wrapper schreibt Audio; der VST3-Ausgang bleibt still.
@@ -619,6 +623,7 @@ Referenz für die Testdateien.
 | T16 | Preset-Roundtrip: Zustand → Datei → Zustand ist identisch | Integrationstest |
 | T17 | Step-Kanten liegen auf Sample-Grenzen, Jitter ≤ 1 Sample | Event-Test (`test_engine.cpp`, M2a) |
 | T18 | Parameter-IDs unverändert | Golden File `tests/parameter_ids.txt` + CI |
+| T19 | Mini-Klaviatur: A–K → C–C, Y/Z runter, X rauf, Leertaste Transport | Unit-Test (`test_computerkeyboard.cpp`) |
 
 ---
 

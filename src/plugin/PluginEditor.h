@@ -1,12 +1,15 @@
 #pragma once
 
 #include "plugin/LookAndFeel.h"
+#include "plugin/Preset.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include <array>
+#include <map>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace heptachord
@@ -25,6 +28,8 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
     bool keyPressed (const juce::KeyPress& key) override;
+    bool keyStateChanged (bool isKeyDown) override;
+    void focusLost (FocusChangeType) override;
 
 private:
     struct CaptionEntry
@@ -73,6 +78,8 @@ private:
     void layoutVoices (juce::Rectangle<int> area);
     void layoutSteps (juce::Rectangle<int> area);
     void updateTransportButton();
+    void applySelectedPreset();
+    void applyPreset (const Preset& preset);
 
     Processor& processor;
     HeptachordLookAndFeel lookAndFeel;
@@ -87,6 +94,7 @@ private:
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> buttonAttachments;
 
     // Globale Leiste.
+    juce::ComboBox* presetBox = nullptr;
     juce::ComboBox* rootBox = nullptr;
     juce::ComboBox* scaleBox = nullptr;
     juce::ComboBox* rateBox = nullptr;
@@ -122,6 +130,14 @@ private:
     juce::Rectangle<int> stepsArea;
 
     bool standalone = false;
+
+    // Tastatur des Standalones (QWERTZ-freundlich, siehe ComputerKeyboard.h).
+    int keyboardOctave = 0;
+    std::set<int> pressedKeys;
+    std::map<int, int> heldNotes; // Tastencode -> MIDI-Note
+
+    // Factory-Presets (M5).
+    std::vector<Preset> factoryPresets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Editor)
 };

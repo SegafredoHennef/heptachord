@@ -94,11 +94,47 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
     const ParameterValues values = m_binding.current();
     const HostTimeline timeline = buildTimeline (buffer.getNumSamples());
 
+    // Tastatur des Standalones: eingegangene Noten in den Eingangspuffer
+    // mischen. Der Zeitstempel waechst pro Ereignis, damit die Reihenfolge
+    // (Note-Off vor Note-On) erhalten bleibt. Im VST3 bleibt alles unberuehrt.
+    if (isStandalone())
+    {
+        const std::lock_guard<std::mutex> lock (m_keyboardMutex);
+
+        int sample = 0;
+        for (const auto metadata : m_keyboardMidi)
+        {
+            midiMessages.addEvent (metadata.getMessage(), sample);
+            ++sample;
+        }
+
+        m_keyboardMidi.clear();
+    }
+
     // midiMessages ist Ein- und Ausgabe zugleich; der Bridge kopiert zuerst.
     m_bridge.process (values, timeline, midiMessages, midiMessages);
 
     if (isStandalone())
         m_synth.process (midiMessages, buffer);
+}
+
+void Processor::injectKeyboardNoteOn (int noteNumber, int velocity)
+{
+    if (! isStandalone())
+        return;
+
+    const std::lock_guard<std::mutex> lock (m_keyboardMutex);
+    m_keyboardMidi.addEvent (
+        juce::MidiMessage::noteOn (1, noteNumber, static_cast<juce::uint8> (velocity)), 0);
+}
+
+void Processor::injectKeyboardNoteOff (int noteNumber)
+{
+    if (! isStandalone())
+        return;
+
+    const std::lock_guard<std::mutex> lock (m_keyboardMutex);
+    m_keyboardMidi.addEvent (juce::MidiMessage::noteOff (1, noteNumber), 0);
 }
 
 void Processor::toggleStandaloneTransport() noexcept

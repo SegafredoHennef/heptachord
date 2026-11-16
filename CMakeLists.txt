@@ -61,6 +61,8 @@ target_sources(heptachord PRIVATE
     src/plugin/LookAndFeel.cpp
     src/plugin/PluginProcessor.cpp
     src/plugin/PluginEditor.cpp
+    src/plugin/Preset.cpp
+    src/plugin/ComputerKeyboard.cpp
 )
 
 target_link_libraries(heptachord
@@ -101,8 +103,12 @@ add_executable(heptachord_tests
     tests/test_settings.cpp
     tests/test_bridge.cpp
     tests/test_synth.cpp
+    tests/test_preset.cpp
+    tests/test_computerkeyboard.cpp
     src/plugin/ProcessorBridge.cpp
     src/plugin/TestSynth.cpp
+    src/plugin/Preset.cpp
+    src/plugin/ComputerKeyboard.cpp
 )
 target_link_libraries(heptachord_tests PRIVATE
     heptachord_core
@@ -111,6 +117,15 @@ target_link_libraries(heptachord_tests PRIVATE
 )
 target_compile_definitions(heptachord_tests PRIVATE
     HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    HEPTACHORD_PRESETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/presets"
+)
+
+# Factory-Presets in den Build-Ordner kopieren, damit der Editor sie laden kann.
+add_custom_command(TARGET heptachord POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/presets"
+            "$<TARGET_FILE_DIR:heptachord>/presets"
+    COMMENT "Kopiere Factory-Presets in den Build-Ordner"
 )
 
 add_test(NAME core COMMAND heptachord_tests)
