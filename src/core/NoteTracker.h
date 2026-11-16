@@ -37,7 +37,13 @@ public:
 private:
     void remove (int pitch) noexcept;
 
-    std::array<int, 128> m_held {};
+    struct HeldNote
+    {
+        int pitch = 60;
+        int velocity = 100;
+    };
+
+    std::array<HeldNote, 128> m_held {};
     int m_count = 0;
     int m_lastPitch = 60;
     int m_lastVelocity = 100;

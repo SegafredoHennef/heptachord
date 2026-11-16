@@ -7,6 +7,7 @@
 #include "core/StepSequencer.h"
 #include "core/TimedEvent.h"
 
+#include <atomic>
 #include <cstdint>
 #include <random>
 #include <vector>
@@ -57,10 +58,10 @@ public:
                        EventList& out);
 
     // reset-Parameter: der naechste Step-Rand beginnt beim ersten aktiven Step.
-    void requestReset() noexcept { m_resetPending = true; }
+    void requestReset() noexcept { m_resetPending.store (true, std::memory_order_relaxed); }
 
     // Preset-Wechsel, Editor schliessen: Noten beenden.
-    void requestAllNotesOff() noexcept { m_allNotesOffPending = true; }
+    void requestAllNotesOff() noexcept { m_allNotesOffPending.store (true, std::memory_order_relaxed); }
 
     const NoteTracker& noteTracker() const noexcept { return m_notes; }
     std::int64_t nextSlotIndex() const noexcept { return m_nextSlot; }
@@ -127,8 +128,8 @@ private:
 
     bool m_wasPlaying = false;
     bool m_haveAnchor = false;
-    bool m_resetPending = false;
-    bool m_allNotesOffPending = false;
+    std::atomic<bool> m_resetPending { false };
+    std::atomic<bool> m_allNotesOffPending { false };
 
     double m_bpm = 120.0;
     double m_sampleRate = 44100.0;

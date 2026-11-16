@@ -23,6 +23,7 @@ add_library(heptachord_core STATIC
     src/core/StepPlanner.cpp
     src/core/NoteTracker.cpp
     src/core/StepEngine.cpp
+    src/core/SettingsFromValues.cpp
 )
 target_include_directories(heptachord_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(heptachord_core PUBLIC cxx_std_20)
@@ -54,6 +55,9 @@ juce_add_plugin(heptachord
 
 target_sources(heptachord PRIVATE
     src/plugin/ParameterLayout.cpp
+    src/plugin/ParameterBinding.cpp
+    src/plugin/ProcessorBridge.cpp
+    src/plugin/TestSynth.cpp
     src/plugin/PluginProcessor.cpp
     src/plugin/PluginEditor.cpp
 )
@@ -93,8 +97,17 @@ add_executable(heptachord_tests
     tests/test_planner.cpp
     tests/test_notetracker.cpp
     tests/test_engine.cpp
+    tests/test_settings.cpp
+    tests/test_bridge.cpp
+    tests/test_synth.cpp
+    src/plugin/ProcessorBridge.cpp
+    src/plugin/TestSynth.cpp
 )
-target_link_libraries(heptachord_tests PRIVATE heptachord_core Catch2::Catch2WithMain)
+target_link_libraries(heptachord_tests PRIVATE
+    heptachord_core
+    Catch2::Catch2WithMain
+    juce::juce_audio_basics
+)
 target_compile_definitions(heptachord_tests PRIVATE
     HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )

@@ -78,7 +78,9 @@ stillem Stereo-Bus (ADR 0001); der Standalone ergänzt einen Test-Synth.
 ### 2.1 Note-Tracking
 
 - Das Plugin ist **monophon mit Last-Note-Priority** (Entscheidung 5).
-  Bei mehreren gehaltenen Noten zählt die zuletzt gedrückte.
+  Bei mehreren gehaltenen Noten zählt die zuletzt gedrückte. Wird sie
+  losgelassen, fällt die Tonhöhenquelle auf die davor gehaltene Note zurück —
+  samt deren Velocity; Pitch und Velocity gehören immer zur selben Note.
 - Ein Note-On startet den Betrieb des Step-Engines *nicht* neu: die Uhr läuft
   ab Transport-Start kontinuierlich weiter (Entscheidung 13).
 - Solange keine Note gehalten wird (und Latch nichts hält), entstehen **keine
@@ -470,7 +472,9 @@ Step-Rand** (Entscheidung 17). Eine Änderung mitten im Step verändert keine
 klingende Note; sie zeigt sich erst im nächsten Trigger.
 
 Ausnahmen, die sofort wirken und mit Note-Off/All-Notes-Off behandelt werden:
-Preset-Wechsel, `reset` (nur Position), `output.mode`-Wechsel.
+Preset-Wechsel, `reset` (nur Position), `output.mode`-Wechsel und jeder
+Kanalwechsel (`thru.channel`, `hN.channel`). Beim Kanalwechsel bekommen die
+**verlassenen** Kanäle sofort ihr All-Notes-Off, damit keine Note hängen bleibt.
 
 ### 8.3 All-Notes-Off
 
@@ -479,6 +483,7 @@ Ein All-Notes-Off (je belegtem Kanal) geht raus bei:
 - Transport-Stop,
 - Locate / Loop-Sprung (Abschnitt 4.5),
 - Preset-Wechsel (Laden),
+- Wechsel der Kanalbelegung (Abschnitt 8.2),
 - Plugin-Deaktivierung / Editor-Schließen.
 
 Im Modus Multi sind das die Kanäle von Thru und H1–H3, im Modus Single nur
@@ -532,10 +537,14 @@ Blocks.
 
 ## 10. Standalone
 
-- Eigener Transport: 120 BPM, Leertaste startet/stoppt (Entscheidung 29).
-- Eingebauter Test-Synth: 4-stimmig, Sägezahn, Tiefpass, ADSR.
+- Eigener Transport: 120 BPM, Leertaste oder Knopf startet/stoppt
+  (Entscheidung 29). Im Standalone läuft die Uhr als einzige Quelle; es gibt
+  keinen Host, dessen ppq überschreiben könnte.
+- Eingebauter Test-Synth: 4-stimmig, Sägezahn, Tiefpass, ADSR (Entscheidung 69).
+  Er spielt genau die vier Stimmen, die der Core auf vier Kanälen ausgibt.
 - MIDI-Clock-Eingang erst ab M6.
-- Der Standalone nutzt denselben Core und denselben Editor.
+- Der Standalone nutzt denselben Core und denselben Editor. Nur der
+  Standalone-Wrapper schreibt Audio; der VST3-Ausgang bleibt still.
 
 ---
 
@@ -572,13 +581,16 @@ Die acht CV-Ausgänge (Pitch/Gate pro Stimme) werden durch MIDI-Out auf
 | A5 | Kein Velocity-Faktor pro Stimme im Core | Abschnitt 6 | **erledigt in M1** |
 | A6 | Keine Note-Eingangsseite | Abschnitt 2.1/2.2 | **erledigt in M2a**: `NoteTracker` |
 | A7 | Keine Ereignisschicht (nur blockweise Planung) | Abschnitte 4.5, 8.4 | **erledigt in M2a**: `StepEngine`, `TimedEvent` |
-| A8 | Parameter, Transport und MIDI-Ausgabe sind noch nicht angebunden | — | offen (M2b) |
+| A8 | Parameter, Transport und MIDI-Ausgabe sind noch nicht angebunden | — | **erledigt in M2b**: `ParameterBinding`, `ProcessorBridge` |
+| A9 | Kein hörbarer Ton im Standalone | Abschnitt 10 | **erledigt in M2b**: `TestSynth` |
 
-Der Core enthält damit `StepClock` (Timing), `StepSequencer` (Traversal),
-`StepPlanner` (Planung + Voice-Mathematik), `NoteTracker` (Eingangsseite) und
-`StepEngine` (Ereignisschicht). Was noch fehlt, ist die Anbindung an JUCE:
-APVTS → `EngineSettings`, Host-Transport → `HostTimeline`, `TimedEvent` →
-`juce::MidiBuffer` (M2b).
+Der Core enthält `StepClock` (Timing), `StepSequencer` (Traversal),
+`StepPlanner` (Planung + Voice-Mathematik), `NoteTracker` (Eingangsseite),
+`StepEngine` (Ereignisschicht) und `SettingsFromValues` (Parameterabbildung).
+Die Plugin-Schicht ist dünn: `ParameterBinding` (APVTS → Werte),
+`ProcessorBridge` (Werte + Host-Zeit → MIDI) und `TestSynth` (nur Standalone).
+Damit ist der Signalweg vollständig; offen ist der Editor (M3) und der
+Preset-Loader (JSON, M5).
 
 ---
 

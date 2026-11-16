@@ -186,3 +186,21 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     eintreffendes Note-Off wirkt noch vor dem Trigger dieser Grenze. Gate-Enden
     und laufende Slots werden über die Blockgrenze hinaus weitergereicht, nicht
     abgeschnitten.
+
+## Runde 9 (M2b — Anbindung und Standalone)
+
+67. **`reset` ist flankengetriggert** — Das Plugin löst nur beim Übergang
+    0 → 1 aus und schreibt den Parameter nicht zurück. Ein dauerhaft auf 1
+    gehaltener Wert (hängender Taster, gehaltene Automation) setzt das Raster
+    damit nicht in jedem Block neu. Vorteil gegenüber dem Rückschreiben: die
+    Host-Automation bleibt unangetastet.
+68. **Kanalwechsel beendet Noten** — Ändert sich die Kanalbelegung
+    (`output.mode`, `thru.channel`, `hN.channel`), bekommen die **verlassenen**
+    Kanäle sofort ein All-Notes-Off; die Engine setzt zusätzlich ihren
+    Stimmenzustand zurück. Ohne das bliebe eine klingende Note auf dem alten
+    Kanal hängen, weil das nächste Gate-Ende auf dem neuen Kanal läge.
+69. **Test-Synth nur im Standalone** — Der Standalone bekommt einen
+    4-stimmigen Sägezahn-Synth (Tiefpass, ADSR) und einen eigenen Transport
+    (120 BPM, Leertaste oder Knopf). Der VST3-Ausgang bleibt still, damit die
+    Kategorie „Instrument" erhalten bleibt und der Host keine Fremd-Audioquelle
+    bekommt. Beide nutzen denselben Core.

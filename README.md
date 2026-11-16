@@ -9,15 +9,16 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: M0 (Grundgerüst).** Kein Release, keine Presets, kein GUI.
+**Status: M2b — Signalweg vollständig.** Parameter, Host-Transport und
+MIDI-Ausgabe sind angebunden, der Standalone spielt über einen Test-Synth.
+Editor (M3), Presets (M5) und Release stehen noch aus.
 
 ## Struktur
 
 | Pfad | Inhalt |
 |---|---|
-| `src/core` | Domänenlogik, **ohne JUCE** (Skalen, Step-Engine, Notenlogik) |
-| `src/plugin` | JUCE-Wrapper, VST3-Build |
-| `src/standalone` | JUCE-Anwendung mit Test-Synth |
+| `src/core` | Domänenlogik, **ohne JUCE** (Skalen, Step-Engine, Notenlogik, Parameterabbildung) |
+| `src/plugin` | JUCE-Wrapper, Parameter-Bindung, MIDI-Brücke, Test-Synth |
 | `tests` | Catch2-Tests, Golden Files, Referenzdaten |
 | `tools` | Generatoren (Parameter-Tabelle, Python-Referenz) |
 | `docs` | Spezifikation, ADRs, Entscheidungs-Log |
@@ -35,7 +36,17 @@ python tools/gen_params.py --check  # CI-Prüfung auf Drift
 
 Parameter-IDs sind eingefroren (ADR 0003, `docs/entscheidungen.md` Nr. 40).
 
-## Bauen (geplant, in M0 zu verifizieren)
+## Benutzung
+
+**In der DAW (VST3):** als Instrument laden, eine Note halten und den
+MIDI-Ausgang des Plugins auf ein Ziel-Instrument routen (Live: „MIDI To",
+Reaper: Routing-Matrix, Bitwig: Note-Effekt-Kette, Cubase: MIDI-Send). Der
+Audio-Ausgang von Heptachord ist absichtlich still.
+
+**Standalone:** Note über die MIDI-Eingabe spielen, Leertaste oder der Knopf
+startet und stoppt den internen Transport (120 BPM).
+
+## Bauen (in M0 verifiziert)
 
 Voraussetzungen: Windows 10/11, Visual Studio 2026 Build Tools mit
 C++-Workload (MSVC v143), CMake ≥ 3.28, Ninja, Python ≥ 3.11, Git.

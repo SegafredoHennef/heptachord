@@ -5,21 +5,32 @@
 
 namespace heptachord
 {
+namespace
+{
+// Der Standalone hat keinen Host-Transport (Entscheidung 29).
+constexpr double kStandaloneBpm = 120.0;
+} // namespace
 
 Processor::Processor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    m_binding.connect (apvts);
 }
 
 Processor::~Processor() = default;
 
-void Processor::prepareToPlay (double, int)
+void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
 {
+    m_bridge.prepare (sampleRate, maximumExpectedSamplesPerBlock);
+    m_synth.prepare (sampleRate);
+    m_standalonePpq = 0.0;
 }
 
 void Processor::releaseResources()
 {
+    m_bridge.requestAllNotesOff();
+    m_synth.reset();
 }
 
 bool Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -28,16 +39,71 @@ bool Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
         && layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
 }
 
+HostTimeline Processor::buildTimeline (int numSamples) noexcept
+{
+    HostTimeline timeline;
+
+    const double sampleRate = getSampleRate();
+    timeline.sampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    timeline.numSamples = numSamples;
+    timeline.bpm = kStandaloneBpm;
+    timeline.isPlaying = true;
+
+    if (isStandalone())
+    {
+        timeline.positionValid = true;
+        timeline.isPlaying = m_standalonePlaying.load (std::memory_order_relaxed);
+        timeline.ppqPosition = m_standalonePpq;
+
+        if (timeline.isPlaying)
+            m_standalonePpq += static_cast<double> (numSamples) * kStandaloneBpm / (60.0 * timeline.sampleRate);
+        else
+            m_standalonePpq = 0.0;
+
+        return timeline;
+    }
+
+    if (auto* hostPlayHead = getPlayHead())
+    {
+        if (const auto position = hostPlayHead->getPosition())
+        {
+            if (const auto bpm = position->getBpm())
+                timeline.bpm = *bpm;
+
+            timeline.isPlaying = position->getIsPlaying();
+
+            if (const auto ppq = position->getPpqPosition())
+            {
+                timeline.ppqPosition = *ppq;
+                timeline.positionValid = true;
+            }
+        }
+    }
+
+    return timeline;
+}
+
 void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
 
-    // Kein Audio: der Bus ist still, damit Live/Cubase das Instrument laden.
+    // Kein Audio im VST3: der Bus ist still, damit Live/Cubase das Instrument
+    // laden. Nur der Standalone-Synth schreibt in den Puffer.
     buffer.clear();
 
-    // M0: Noten unveraendert durchreichen (Identitaet). M1 ersetzt das durch
-    // Step-Engine und Stimmenausgabe.
-    juce::ignoreUnused (midiMessages);
+    const ParameterValues values = m_binding.current();
+    const HostTimeline timeline = buildTimeline (buffer.getNumSamples());
+
+    // midiMessages ist Ein- und Ausgabe zugleich; der Bridge kopiert zuerst.
+    m_bridge.process (values, timeline, midiMessages, midiMessages);
+
+    if (isStandalone())
+        m_synth.process (midiMessages, buffer);
+}
+
+void Processor::toggleStandaloneTransport() noexcept
+{
+    m_standalonePlaying.store (! isStandalonePlaying(), std::memory_order_relaxed);
 }
 
 juce::AudioProcessorEditor* Processor::createEditor()
@@ -54,8 +120,15 @@ void Processor::getStateInformation (juce::MemoryBlock& destData)
 void Processor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (const auto xml = getXmlFromBinary (data, sizeInBytes))
+    {
         if (xml->hasTagName (apvts.state.getType()))
+        {
             apvts.replaceState (juce::ValueTree::fromXml (*xml));
+
+            // Preset-Wechsel: klingende Noten sofort beenden (Spezifikation 8.2).
+            m_bridge.requestAllNotesOff();
+        }
+    }
 }
 
 } // namespace heptachord

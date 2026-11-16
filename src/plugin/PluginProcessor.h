@@ -1,6 +1,12 @@
 #pragma once
 
+#include "plugin/ParameterBinding.h"
+#include "plugin/ProcessorBridge.h"
+#include "plugin/TestSynth.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
+
+#include <atomic>
 
 namespace heptachord
 {
@@ -8,7 +14,9 @@ namespace heptachord
 class Editor;
 
 // Instrument mit stillem Stereo-Ausgang (ADR 0001): kein Audio, Noten raus.
-// M0: MIDI wird unveraendert durchgereicht, die Step-Engine folgt in M1.
+// Die Ereignisschicht liegt im Core (StepEngine); hier werden Parameter,
+// Host-Transport und MIDI angebunden. Im Standalone kommt ein Test-Synth
+// dazu (Spezifikation Abschnitt 10).
 class Processor final : public juce::AudioProcessor
 {
 public:
@@ -38,9 +46,23 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Standalone-Transport (Spezifikation 10, Entscheidung 29).
+    bool isStandalone() const noexcept { return wrapperType == wrapperType_Standalone; }
+    void toggleStandaloneTransport() noexcept;
+    bool isStandalonePlaying() const noexcept { return m_standalonePlaying.load (std::memory_order_relaxed); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
+    HostTimeline buildTimeline (int numSamples) noexcept;
+
+    ParameterBinding m_binding {};
+    ProcessorBridge m_bridge {};
+    TestSynth m_synth {};
+
+    std::atomic<bool> m_standalonePlaying { true };
+    double m_standalonePpq = 0.0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Processor)
 };
 

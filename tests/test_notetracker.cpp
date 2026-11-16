@@ -24,6 +24,7 @@ TEST_CASE ("Letzte Note gewinnt", "[notetracker]")
     tracker.noteOff (64);
     REQUIRE (tracker.active());
     REQUIRE (tracker.pitch() == 60);
+    REQUIRE (tracker.velocity() == 100);
     REQUIRE (tracker.heldCount() == 1);
 
     tracker.noteOff (60);

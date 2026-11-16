@@ -5,6 +5,29 @@
 namespace heptachord
 {
 
+// Die 17 Raten aus parameters.toml (Choice-Index -> Faktor). Reihenfolge und
+// Bedeutung sind eingefroren (Parameter-ID-Golden-File); 1.0 = ein Takt.
+inline constexpr int kNumRates = 17;
+inline constexpr float kRateValues[kNumRates] = {
+    0.0625f,        // 1/16
+    1.0f / 12.0f,   // 1/12
+    0.125f,         // 1/8
+    1.0f / 6.0f,    // 1/6
+    0.25f,          // 1/4
+    1.0f / 3.0f,    // 1/3
+    0.375f,         // 3/8
+    0.5f,           // 1/2
+    2.0f / 3.0f,    // 2/3
+    0.75f,          // 3/4
+    1.0f,           // 1
+    4.0f / 3.0f,    // 4/3
+    1.5f,           // 3/2
+    2.0f,           // 2
+    3.0f,           // 3
+    4.0f,           // 4
+    8.0f            // 8
+};
+
 // Rechnet Step-Laengen und Slot-Zeiten. Kennt weder Host noch JUCE.
 //
 // Definitionen aus docs/03-spezifikation.md, Abschnitt 4:
