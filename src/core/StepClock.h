@@ -21,6 +21,7 @@ public:
     void setSwing (float percent) noexcept;  // 0 ... 75
     void setSlackMs (float ms) noexcept;     // -100 ... +100
 
+    double bpm() const noexcept { return m_bpm; }
     double stepSeconds() const noexcept;
     double swingSeconds() const noexcept;
     double slackSeconds() const noexcept;

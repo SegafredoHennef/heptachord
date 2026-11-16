@@ -164,3 +164,25 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
 63. **PingPong** — Die Folge startet beim ersten aktiven Step und wiederholt
     die Endpunkte nicht: `0 … k−1, k−2 … 1, 0, 1 …`. Bei zwei aktiven Steps
     wechselt die Richtung, bei einem bleibt der Cursor stehen.
+
+## Runde 8 (M2a — Ereignisschicht)
+
+64. **Zeitmodell** — Die Slot-Position kommt aus der **Host-ppq**
+    (`n = floor(ppq / Slotlänge)`); innerhalb des Blocks wird sie sample-genau
+    fortgeschrieben und gegen die Host-ppq geprüft. Weicht der Host um mehr als
+    eine Viertel-Slotlänge ab (Locate, Loop-Sprung, Tempoänderung), gilt der
+    Host: All-Notes-Off, Traversal beginnt neu beim ersten aktiven Step. Ohne
+    Host-Position läuft die Uhr intern weiter. Ein reiner Sample-Zähler oder
+    eine blockweise Quantisierung wäre einfacher, würde aber nach einem Locate
+    versetzt weiterlaufen bzw. bis zu einer Blocklänge jittern.
+65. **Wahrscheinlichkeit pro Stimme und Treffer** — Der Wurf für
+    `sN.probability` fällt **pro Stimme und pro Treffer**, nicht einmal pro
+    Step. Bei gleicher Wahrscheinlichkeit dürfen also Thru und H1 anschlagen,
+    während H2 und H3 ausfallen. Bei 0 % schlägt keine Stimme an, bei 100 %
+    jede. Die Gate-Länge ist davon unabhängig.
+66. **Ereignisreihenfolge im Block** — Bei gleichem Sample-Offset gilt:
+    Gate-Ende (Note-Off), Host-Eingabe, Ratchet-Treffer, Slot-Beginn. Damit
+    steht an jeder Step-Grenze das Note-Off vor dem Note-On, und ein
+    eintreffendes Note-Off wirkt noch vor dem Trigger dieser Grenze. Gate-Enden
+    und laufende Slots werden über die Blockgrenze hinaus weitergereicht, nicht
+    abgeschnitten.

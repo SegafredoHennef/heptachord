@@ -272,7 +272,22 @@ beginnt wieder bei Slot 0 / dem ersten aktiven Step der Traversal-Folge. Ein
 laufender Slot-Timer wird dabei nicht zurückgesetzt — nur die Zuordnung
 Slot → Step.
 
-### 4.5 Genauigkeit
+### 4.5 Locate und Loop-Sprung
+
+Die Slot-Position wird aus der Host-ppq abgeleitet (Entscheidung 64): Slot `n`
+beginnt bei `T(n)` (Abschnitt 4.3), die Position im Block ist
+`(T(n) − ppq) · sampleRate · BPM/60`. Weicht die Host-ppq um mehr als eine
+Viertel-Slotlänge vom fortgeschriebenen Wert ab (Locate, Loop-Sprung,
+Tempoänderung), gilt der Host:
+
+- klingende Noten werden per **All-Notes-Off** beendet (Abschnitt 8.3),
+- die Traversal-Folge beginnt neu beim ersten aktiven Step,
+- die Slot-Zuordnung folgt wieder `T(n)`.
+
+Innerhalb eines Blocks werden alle Ereignisse sample-genau einsortiert; der
+Rasterbezug bleibt dadurch auch über Blockgrenzen hinweg stabil.
+
+### 4.6 Genauigkeit
 
 Step-Grenzen liegen auf Sample-Grenzen; Jitter ≤ 1 Sample. Der Plugin meldet
 **0 Samples Latenz** und verarbeitet keinen Audioinhalt.
@@ -339,8 +354,13 @@ Die Maske ist im Parameterraum 32 Einzel-Bools; intern eine Bitmaske.
 
 - Pro Trigger-Ereignis ein Wurf `r ∈ [0, 1)`. Der Trigger findet statt, wenn
   `r < probability / 100`. Bei 100 % findet er immer statt.
+- Der Wurf ist **pro Stimme und pro Treffer** (Entscheidung 65): Bei einem
+  Ratchet-Treffer können Thru und H1 anschlagen, H2 und H3 ausfallen.
 - Bei Ratchet ist der Wurf **pro Treffer** — einzelne Treffer dürfen ausfallen.
 - Hold und Rest würfeln nicht.
+
+Ein ausgefallener Treffer ändert **nicht** die Gate-Länge der übrigen Stimmen;
+die Gate-Zeit hängt nur von `hN.gate`, `stepSeconds` und `ratchet` ab.
 
 ---
 
@@ -457,8 +477,40 @@ Preset-Wechsel, `reset` (nur Position), `output.mode`-Wechsel.
 Ein All-Notes-Off (je belegtem Kanal) geht raus bei:
 
 - Transport-Stop,
+- Locate / Loop-Sprung (Abschnitt 4.5),
 - Preset-Wechsel (Laden),
 - Plugin-Deaktivierung / Editor-Schließen.
+
+Im Modus Multi sind das die Kanäle von Thru und H1–H3, im Modus Single nur
+`thru.channel` (Entscheidung 38).
+
+### 8.4 Ereignisschicht
+
+Der Core erzeugt pro Block eine Liste `TimedEvent` (Offset, Typ, Pitch,
+Velocity, Kanal). Sie ist fest dimensioniert (1024 Einträge) und allokiert
+nicht im Audiothread. Ein Block wird in **einem** Durchlauf abgearbeitet; für
+jedes Sample, an dem etwas passiert, gilt diese Reihenfolge:
+
+1. **fällige Gate-Enden** (Note-Off),
+2. **Eingabe-Events** des Hosts (Note-On/Note-Off, Offset im Block),
+3. **Ratchet-Treffer** des laufenden Slots,
+4. **Slot-Beginn** (neuer Step).
+
+Damit steht an derselben Sample-Position jedes Note-Off vor dem zugehörigen
+Note-On (Abschnitt 8.1), und ein eintreffendes Note-Off wirkt noch vor dem
+Trigger an dieser Grenze.
+
+Gate-Enden und laufende Slots werden über die Blockgrenze hinaus
+weitergereicht: Ein Gate, das hinter dem Blockende liegt, wird nicht
+abgeschnitten, sondern im Folgeblock fällig. Ratchet-Treffer jenseits des
+Blockendes ebenso.
+
+Eingabe-Events werden auch verarbeitet, wenn der Transport steht (Notentracking
+und Latch bleiben aktuell); Trigger entstehen dann keine.
+
+Der `reset`-Trigger wirkt auf den **nächsten** Slot-Beginn (Abschnitt 4.4), ein
+Preset-Wechsel oder `requestAllNotesOff()` sofort an Offset 0 des nächsten
+Blocks.
 
 ---
 
@@ -518,11 +570,15 @@ Die acht CV-Ausgänge (Pitch/Gate pro Stimme) werden durch MIDI-Out auf
 | A3 | Step-Engine fehlt vollständig | Abschnitt 4/5 | **erledigt in M1**: `StepClock`, `StepSequencer`, `StepPlanner` |
 | A4 | Thru-Gate ist nicht konfigurierbar | 100 % fix | offen (bewusst so, siehe 6.3) |
 | A5 | Kein Velocity-Faktor pro Stimme im Core | Abschnitt 6 | **erledigt in M1** |
+| A6 | Keine Note-Eingangsseite | Abschnitt 2.1/2.2 | **erledigt in M2a**: `NoteTracker` |
+| A7 | Keine Ereignisschicht (nur blockweise Planung) | Abschnitte 4.5, 8.4 | **erledigt in M2a**: `StepEngine`, `TimedEvent` |
+| A8 | Parameter, Transport und MIDI-Ausgabe sind noch nicht angebunden | — | offen (M2b) |
 
-Der Core enthält damit `StepClock` (Timing), `StepSequencer` (Traversal) und
-`StepPlanner` (Planung + Voice-Mathematik). Was noch fehlt, ist die
-Ereignis-Schicht: der Block-Loop, der Slots und Gates in MIDI-Events mit
-Sample-Offset übersetzt (M2/M3).
+Der Core enthält damit `StepClock` (Timing), `StepSequencer` (Traversal),
+`StepPlanner` (Planung + Voice-Mathematik), `NoteTracker` (Eingangsseite) und
+`StepEngine` (Ereignisschicht). Was noch fehlt, ist die Anbindung an JUCE:
+APVTS → `EngineSettings`, Host-Transport → `HostTimeline`, `TimedEvent` →
+`juce::MidiBuffer` (M2b).
 
 ---
 
@@ -547,9 +603,9 @@ Referenz für die Testdateien.
 | T12 | Velocity: `round(v · Faktor)`, geklemmt auf 1…127; Spread-Folge 100/85/70 | Unit-Test |
 | T13 | Gate endet nie nach der Step-Grenze | Unit-Test |
 | T14 | Kanäle: Multi = 4 Kanäle, Single = alle auf `thru.channel` | Unit-Test |
-| T15 | Pitchwechsel = Note-Off + Note-On, kein Pitchbend | Event-Test |
+| T15 | Pitchwechsel = Note-Off + Note-On, kein Pitchbend | Event-Test (`test_engine.cpp`, M2a) |
 | T16 | Preset-Roundtrip: Zustand → Datei → Zustand ist identisch | Integrationstest |
-| T17 | Step-Kanten liegen auf Sample-Grenzen, Jitter ≤ 1 Sample | Event-Test |
+| T17 | Step-Kanten liegen auf Sample-Grenzen, Jitter ≤ 1 Sample | Event-Test (`test_engine.cpp`, M2a) |
 | T18 | Parameter-IDs unverändert | Golden File `tests/parameter_ids.txt` + CI |
 
 ---

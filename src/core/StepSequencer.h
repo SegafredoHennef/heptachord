@@ -41,6 +41,7 @@ private:
 
     std::vector<int> m_active;      // Indizes der aktiven Steps (0 ... 7)
     std::array<StepSettings, kNumSteps> m_steps {};
+    bool m_initialized = false;
     Direction m_direction = Direction::Forward;
     RandomSource m_random;
     int m_position = -1;            // Position in m_active

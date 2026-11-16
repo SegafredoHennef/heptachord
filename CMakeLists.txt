@@ -21,6 +21,8 @@ add_library(heptachord_core STATIC
     src/core/StepClock.cpp
     src/core/StepSequencer.cpp
     src/core/StepPlanner.cpp
+    src/core/NoteTracker.cpp
+    src/core/StepEngine.cpp
 )
 target_include_directories(heptachord_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(heptachord_core PUBLIC cxx_std_20)
@@ -89,6 +91,8 @@ add_executable(heptachord_tests
     tests/test_stepclock.cpp
     tests/test_sequencer.cpp
     tests/test_planner.cpp
+    tests/test_notetracker.cpp
+    tests/test_engine.cpp
 )
 target_link_libraries(heptachord_tests PRIVATE heptachord_core Catch2::Catch2WithMain)
 target_compile_definitions(heptachord_tests PRIVATE

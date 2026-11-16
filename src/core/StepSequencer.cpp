@@ -7,7 +7,22 @@ namespace heptachord
 
 void StepSequencer::setSteps (const std::array<StepSettings, kNumSteps>& steps) noexcept
 {
+    // Nur die active-Flags bestimmen die Traversal-Folge. Aendert sich sonst
+    // etwas (Modus, Offset, Maske), bleibt der Cursor stehen.
+    bool activeChanged = ! m_initialized;
+    for (int i = 0; i < kNumSteps; ++i)
+    {
+        const auto index = static_cast<std::size_t> (i);
+        if (m_steps[index].active != steps[index].active)
+            activeChanged = true;
+    }
+
     m_steps = steps;
+    m_initialized = true;
+
+    if (! activeChanged)
+        return;
+
     rebuildActive();
     reset();
 }
