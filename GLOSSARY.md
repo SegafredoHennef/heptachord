@@ -41,6 +41,12 @@ Dorisch, Phrygisch, Lydisch, Mixolydisch), die festlegt, welche Halbtonstufen
 innerhalb einer Oktave skaleneigen sind.
 _Avoid_: Mode, Tonart, Temperament
 
+**Zyklus**:
+Ein vollstaendiger Durchlauf aller aktiven Steps in der gewaehlten Richtung
+(Vorwaerts, Rueckwaerts, PingPong, Zufall) — die Einheit, die der MIDI-Export
+als eine Datei festhaelt (Entscheidung 84).
+_Avoid_: Takt, Loop, Pattern
+
 **Bezeichnungsmodus**:
 Die Anzeige-Konvention für Noten- und Skalennamen: Deutsch (C, Cis, …, Ais, H;
 Dur, Dorisch, …), International (b) (C, Db, …, Bb, B) oder International (#)

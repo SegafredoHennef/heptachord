@@ -2,6 +2,23 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.3
+
+- MIDI-Export im Standalone: ein Zyklus als Standard-MIDI Format 1 (PPQ 480,
+  4 Spuren, Tempo-Meta), deterministisch mit festem Seed 1 — identische
+  Parameter erzeugen eine bitgleiche Datei (Entscheidung 84). Letzte
+  Eingangsnote, sonst C4 (MIDI 60). Gate-Enden und Hold-Ketten werden
+  als Note-Offs mitgeschrieben.
+- Drag & Drop: „DRAG"-Knopf in der Steps-Titelzeile zieht eine temporäre
+  `.mid`-Datei in die DAW (Entscheidung 85). „EXPORT" öffnet den
+  Speichern-Dialog; beide Knöpfe nur im Standalone (Entscheidung 86).
+- Dateiname: `Heptachord_<Grundton>_<Skala>_<Rate>.mid` (ASCII).
+- Prüfung: 143 Testfälle / 15493 Assertions, `ctest --preset ninja` 100 %,
+  pluginval `--strictness-level 5` SUCCESS.
+
+ZIP `Heptachord-0.1.3-win.zip` (4,8 MB), SHA-256:
+`EF0265D657E2D708320FEAB20A4A063F9B42A95B2197976C93425188F0A6B993`
+
 ## v0.1.2
 
 - 96 Factory-Presets: alle 12 Grundtöne × 8 Skalen (statt acht, je eins

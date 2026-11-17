@@ -5,6 +5,7 @@
 #include "plugin/TestSynth.h"
 
 #include "core/MidiClock.h"
+#include "core/MidiRender.h"
 
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -79,6 +80,10 @@ public:
     // (Spezifikation 8.2/8.3).
     void notifyPresetChanged() { m_bridge.requestAllNotesOff(); }
 
+    // Export-Kontext (M1/M2, Decision 84): aktuelle Parameter, BPM und
+    // letzte Eingangsnote (0 = noch keine gespielt -> C4-Fallback).
+    midirender::RenderOptions exportOptions() const noexcept;
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -92,6 +97,7 @@ private:
     TestSynth m_synth {};
 
     std::atomic<bool> m_standalonePlaying { true };
+    std::atomic<int> m_lastInputNote { 0 };    // 0 = noch keine Note gespielt
     double m_standalonePpq = 0.0;
 
     juce::MidiBuffer m_keyboardMidi;

@@ -533,6 +533,9 @@ Blocks.
   Migrationsregel im Preset-Loader.
 - 96 Factory-Presets: 12 Grundtöne × 8 Skalen, je Skala ein Charakter-Muster,
   das nur im Grundton transponiert (Entscheidungen 19 und 82).
+- MIDI-Export (nur Standalone): ein Zyklus als Standard-MIDI Format 1,
+  PPQ 480, vier Spuren; deterministisch mit festem Seed 1, letzte Note
+  oder C4-Fallback (Entscheidungen 84–86).
 
 ---
 

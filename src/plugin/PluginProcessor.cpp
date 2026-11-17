@@ -138,6 +138,13 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
     const ParameterValues values = m_binding.current();
     const HostTimeline timeline = buildTimeline (buffer.getNumSamples());
 
+    // Letzte Eingangsnote fuer den Export merken (M1, Decision 84).
+    // Der Audio-Thread schreibt, der UI-Thread liest beim EXPORT-Klick.
+    for (const auto metadata : midiMessages)
+        if (metadata.getMessage().isNoteOn())
+            m_lastInputNote.store (metadata.getMessage().getNoteNumber(),
+                                    std::memory_order_relaxed);
+
     // Tastatur des Standalones: eingegangene Noten in den Eingangspuffer
     // mischen. Der Zeitstempel waechst pro Ereignis, damit die Reihenfolge
     // (Note-Off vor Note-On) erhalten bleibt. Im VST3 bleibt alles unberuehrt.
@@ -213,6 +220,17 @@ bool Processor::clockActive() const noexcept
 double Processor::clockBpm() const noexcept
 {
     return m_clock.snapshot (juce::Time::getMillisecondCounterHiRes() * 0.001).bpm;
+}
+
+midirender::RenderOptions Processor::exportOptions() const noexcept
+{
+    midirender::RenderOptions options;
+    options.settings = settingsFromValues (m_binding.current());
+    options.bpm = clockActive() ? clockBpm() : kStandaloneBpm;
+    options.inputNote = m_lastInputNote.load (std::memory_order_relaxed);
+    options.inputVelocity = midirender::kFallbackVelocity;
+    options.seed = 1;  // fester Seed (Decision 84)
+    return options;
 }
 
 void Processor::closeClockInput() noexcept

@@ -329,3 +329,35 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     namesBox 150 px. root/scale-Combos werden bei Moduswechsel per
     ParameterListener + callAsync neu beschriftet; Items-Indices bleiben
     stabil, damit die Attachments weiterbinden.
+
+## Runde 15 (MIDI-Export v0.1.3)
+
+84. **M1 - deterministischer MIDI-Export eines Zyklus** - Der Standalone
+    rendert genau einen Zyklus (alle aktiven Steps einmal in
+    Traversal-Reihenfolge) ueber dieselbe Planung wie die Live-Engine
+    (src/core/MidiRender.cpp nutzt StepPlanner, StepSequencer, applyStep).
+    Feste Zufallsquelle (Seed 1) fuer Wahrscheinlichkeit und Richtung
+    "Zufall" -> bitgleicher Export bei identischen Parametern (Tests
+    test_midirender.cpp/test_midiexport.cpp). Letzte Eingangsnote, sonst
+    C4 (MIDI 60) als Fallback. Kein Eingriff in den Audio-Thread, kein
+    Host-Transport, kein Wiederholungszaehler (Loopen macht die DAW).
+    Core-Render JUCE-frei (ADR 0007); juce::MidiFile nur in der
+    Plugin-Schicht (src/plugin/MidiExport.cpp).
+85. **M2 - Drag & Drop MIDI** - Der Standalone schreibt eine temporaere
+    .mid-Datei (System-Temp/Heptachord/) und startet einen nativen
+    External-Drag aus der Steps-Titelzeile ("DRAG"-Knopf). Der Editor ist
+    selbst der DragAndDropContainer; der Drag beginnt in mouseDrag nach
+    5 px (JUCE 9: startDragging mit Array<var> von Dateipfaden). M3
+    (WAV durch den Test-Synth) bleibt spaeterer Bedarf.
+86. **Export-Format und Bedienung** - Standard-MIDI Format 1, PPQ 480,
+    vier Spuren (0 Thru, 1..3 H1..H3), Tempo-Meta aus der aktuellen
+    Standalone-BPM (clockBpm() oder 120 Fallback) plus 4/4-Takt in
+    Spur 0. Gate-Enden und Hold-Ketten werden als Note-Offs
+    mitgeschrieben; eine ueber das Zyklusende hinaus klingende Note
+    endet im File danach. Negativer Slack wird auf Tick 0
+    normalisiert. EXPORT- und DRAG-Knopf rechts in der Steps-
+    Titelzeile (dort ist Platz; die Kopfzeile ist knapp), nur im
+    Standalone - im VST3 zeichnet die DAW auf. Dateiname:
+    Heptachord_<Grundton>_<Skala>_<Rate>.mid in ASCII
+    (z. B. Heptachord_C_Dur_1-8.mid). JUCE 9: kein modales
+    FileChooser/MessageBox (launchAsync/showMessageBoxAsync).

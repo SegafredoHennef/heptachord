@@ -21,7 +21,8 @@ class Processor;
 // acht Step-Spalten. Alle Parameter sind gleichzeitig sichtbar.
 // Der Listener-Erbe verfolgt names.mode (Decision 83: Bezeichnungsmodus).
 class Editor final : public juce::AudioProcessorEditor,
-                     private juce::AudioProcessorValueTreeState::Listener
+                     private juce::AudioProcessorValueTreeState::Listener,
+                     public juce::DragAndDropContainer
 {
 public:
     explicit Editor (Processor& processorToEdit);
@@ -145,6 +146,41 @@ private:
     int keyboardOctave = 0;
     std::set<int> pressedKeys;
     std::map<int, int> heldNotes; // Tastencode -> MIDI-Note
+
+    // Export (M1/M2, Decision 84/85): nur Standalone, Knopf in der
+    // Steps-Titelzeile. Drag & Drop erzeugt eine temporaere .mid-Datei.
+    class MidiDragButton final : public juce::TextButton
+    {
+    public:
+        using juce::TextButton::TextButton;
+        std::function<void()> onDragStart;
+
+        void mouseDrag (const juce::MouseEvent& event) override
+        {
+            if (! started && event.getDistanceFromDragStart() > 5 && onDragStart)
+            {
+                started = true;
+                onDragStart();
+            }
+            juce::TextButton::mouseDrag (event);
+        }
+
+        void mouseUp (const juce::MouseEvent& event) override
+        {
+            started = false;
+            juce::TextButton::mouseUp (event);
+        }
+
+    private:
+        bool started = false;
+    };
+
+    void exportMidi();
+    void dragMidi();
+    juce::TextButton exportButton { "EXPORT" };
+    MidiDragButton dragButton { "DRAG" };
+    juce::File lastExportedFile;
+    std::unique_ptr<juce::FileChooser> fileChooser;
 
     // Factory-Presets (M5).
     std::vector<Preset> factoryPresets;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(Heptachord VERSION 0.1.2 LANGUAGES C CXX)
+project(Heptachord VERSION 0.1.3 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,6 +25,7 @@ add_library(heptachord_core STATIC
     src/core/StepEngine.cpp
     src/core/MidiClock.cpp
     src/core/SettingsFromValues.cpp
+    src/core/MidiRender.cpp
 )
 target_include_directories(heptachord_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(heptachord_core PUBLIC cxx_std_20)
@@ -64,6 +65,7 @@ target_sources(heptachord PRIVATE
     src/plugin/PluginEditor.cpp
     src/plugin/Preset.cpp
     src/plugin/ComputerKeyboard.cpp
+    src/plugin/MidiExport.cpp
 )
 
 target_link_libraries(heptachord
@@ -108,10 +110,13 @@ add_executable(heptachord_tests
     tests/test_synth.cpp
     tests/test_preset.cpp
     tests/test_computerkeyboard.cpp
+    tests/test_midirender.cpp
+    tests/test_midiexport.cpp
     src/plugin/ProcessorBridge.cpp
     src/plugin/TestSynth.cpp
     src/plugin/Preset.cpp
     src/plugin/ComputerKeyboard.cpp
+    src/plugin/MidiExport.cpp
 )
 target_link_libraries(heptachord_tests PRIVATE
     heptachord_core

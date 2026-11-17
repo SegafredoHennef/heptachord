@@ -3,6 +3,7 @@
 #include "core/NoteNames.h"
 #include "core/ParameterTable.h"
 #include "plugin/ComputerKeyboard.h"
+#include "plugin/MidiExport.h"
 #include "plugin/PluginProcessor.h"
 
 #include <functional>
@@ -79,6 +80,14 @@ Editor::Editor (Processor& processorToEdit)
             processor.toggleStandaloneTransport();
             updateTransportButton();
         };
+
+        addAndMakeVisible (exportButton);
+        exportButton.setTooltip ("Einen Zyklus als MIDI-Datei speichern (fester Seed 1)");
+        exportButton.onClick = [this] { exportMidi(); };
+
+        addAndMakeVisible (dragButton);
+        dragButton.setTooltip ("MIDI-Datei auf ein anderes Programm ziehen");
+        dragButton.onDragStart = [this] { dragMidi(); };
 
         setWantsKeyboardFocus (true);
     }
@@ -361,6 +370,58 @@ void Editor::applyPreset (const Preset& preset)
     processor.notifyPresetChanged();
 }
 
+void Editor::exportMidi()
+{
+    const auto options = processor.exportOptions();
+
+    // JUCE 9: keine modalen Dialoge (JUCE_MODAL_LOOPS_PERMITTED=0) - der
+    // FileChooser muss als Member leben, bis der Callback zurueckkommt.
+    fileChooser = std::make_unique<juce::FileChooser> (
+        "MIDI-Zyklus speichern",
+        juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
+            .getChildFile (MidiExport::suggestedFileName (options)),
+        "*.mid;*.midi");
+
+    fileChooser->launchAsync (
+        juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+        [this, options] (const juce::FileChooser& chooser)
+        {
+            auto file = chooser.getResult();
+            if (file == juce::File {})
+                return;
+
+            if (file.getFileExtension().isEmpty())
+                file = file.withFileExtension ("mid");
+
+            lastExportedFile = file;
+
+            if (! MidiExport::saveToFile (file, options))
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Die MIDI-Datei konnte nicht gespeichert werden.", this);
+        });
+}
+
+void Editor::dragMidi()
+{
+    // Temporaere Datei schreiben, dann den nativen Drag-Vorgang starten.
+    // juce::Component::startDragging muss aus einem Maus-Event kommen: der
+    // Knopf ist ein Toggle, der onClick dreht - wir starten den Drag hier
+    // ueber das Quell-Component und den letzten Mausdruck.
+    const auto file = MidiExport::writeTempFile (processor.exportOptions());
+
+    if (! file.existsAsFile())
+        return;
+
+    lastExportedFile = file;
+
+    juce::Array<juce::var> files;
+    files.add (file.getFullPathName());
+
+    // Der Editor ist selbst der DragAndDropContainer (siehe Header).
+    startDragging (juce::var (files), &dragButton);
+}
+
 int Editor::currentNameMode() const
 {
     auto* parameter = processor.apvts.getParameter ("names.mode");
@@ -502,6 +563,16 @@ void Editor::resized()
     layoutGlobal (globalArea);
     layoutVoices (voicesArea);
     layoutSteps (stepsArea);
+
+    // Export-Knoepfe in der Steps-Titelzeile (M1/M2, Decision 84/85).
+    if (standalone)
+    {
+        auto titleRight = stepsArea.reduced (kPanelPadding, 3)
+                              .removeFromTop (kZoneTitleHeight)
+                              .removeFromRight (148);
+        exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 2));
+        dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 2));
+    }
 
     for (const auto& entry : controlCaptions)
     {

@@ -9,13 +9,15 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: v0.1.2.** Signalweg (M2b), Oberfläche (M3), Presets (M5)
+**Status: v0.1.3 (in Arbeit).** Signalweg (M2b), Oberfläche (M3), Presets (M5)
 und MIDI-Clock sind fertig: alle 117 Parameter liegen auf einer Seite (globale
 Leiste, Stimmen, acht Step-Spalten), das Erscheinungsbild ist ein eigenes
 dunkles Look-and-Feel, 96 Factory-Presets (12 Grundtöne × 8 Skalen) laden
 aus der Kopfzeile, und der Bezeichnungsmodus schaltet die Noten- und
 Skalennamen zwischen Deutsch, International (b) und International (#) um.
-Der Standalone folgt im Play-Modus dem ersten MIDI-Eingang als Clock-Master
+Der Standalone exportiert einen Zyklus als MIDI-Datei (deterministisch,
+Seed 1) oder zieht ihn per Drag & Drop in eine DAW. Der Standalone folgt im
+Play-Modus dem ersten MIDI-Eingang als Clock-Master
 (FA/FC/FB, 30–300 BPM, 2 s Timeout → Fallback auf 120 BPM); ohne Clock läuft
 der manuelle Transport wie bisher.
 
@@ -56,7 +58,7 @@ stoppt den internen Transport (120 BPM).
 
 ## Download
 
-Aktuelle Version: **v0.1.2** (`Heptachord-0.1.2-win.zip`, SHA-256 steht im
+Aktuelle Version: **v0.1.3** (`Heptachord-0.1.3-win.zip`, SHA-256 steht im
 `CHANGELOG.md`).
 
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
