@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(Heptachord VERSION 0.1.3 LANGUAGES C CXX)
+project(Heptachord VERSION 0.1.4 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -66,6 +66,7 @@ target_sources(heptachord PRIVATE
     src/plugin/Preset.cpp
     src/plugin/ComputerKeyboard.cpp
     src/plugin/MidiExport.cpp
+    src/plugin/AudioExport.cpp
 )
 
 target_link_libraries(heptachord
@@ -112,16 +113,19 @@ add_executable(heptachord_tests
     tests/test_computerkeyboard.cpp
     tests/test_midirender.cpp
     tests/test_midiexport.cpp
+    tests/test_audioexport.cpp
     src/plugin/ProcessorBridge.cpp
     src/plugin/TestSynth.cpp
     src/plugin/Preset.cpp
     src/plugin/ComputerKeyboard.cpp
     src/plugin/MidiExport.cpp
+    src/plugin/AudioExport.cpp
 )
 target_link_libraries(heptachord_tests PRIVATE
     heptachord_core
     Catch2::Catch2WithMain
     juce::juce_audio_basics
+    juce::juce_audio_formats
 )
 target_compile_definitions(heptachord_tests PRIVATE
     HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"

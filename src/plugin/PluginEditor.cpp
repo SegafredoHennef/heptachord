@@ -4,6 +4,7 @@
 #include "core/ParameterTable.h"
 #include "plugin/ComputerKeyboard.h"
 #include "plugin/MidiExport.h"
+#include "plugin/AudioExport.h"
 #include "plugin/PluginProcessor.h"
 
 #include <functional>
@@ -89,10 +90,12 @@ Editor::Editor (Processor& processorToEdit)
         dragButton.setTooltip ("MIDI-Datei auf ein anderes Programm ziehen");
         dragButton.onDragStart = [this] { dragMidi(); };
 
+        addAndMakeVisible (wavButton);
+        wavButton.setTooltip ("Einen Zyklus als WAV rendern (Test-Synth)");
+        wavButton.onClick = [this] { exportWav(); };
+
         setWantsKeyboardFocus (true);
     }
-
-    updateTransportButton();
 
     // Bezeichnungsmodus (Decision 83): Listener registrieren und die
     // Anzeige-Labels einmal aufbauen (Default ist Deutsch).
@@ -370,11 +373,39 @@ void Editor::applyPreset (const Preset& preset)
     processor.notifyPresetChanged();
 }
 
-void Editor::exportMidi()
+void Editor::exportWav()
 {
     const auto options = processor.exportOptions();
 
-    // JUCE 9: keine modalen Dialoge (JUCE_MODAL_LOOPS_PERMITTED=0) - der
+    fileChooser = std::make_unique<juce::FileChooser> (
+        "WAV-Zyklus speichern",
+        juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
+            .getChildFile (AudioExport::suggestedFileName (options)),
+        "*.wav");
+
+    fileChooser->launchAsync (
+        juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+        [this, options] (const juce::FileChooser& chooser)
+        {
+            auto file = chooser.getResult();
+            if (file == juce::File {})
+                return;
+
+            if (file.getFileExtension().isEmpty())
+                file = file.withFileExtension ("wav");
+
+            lastExportedFile = file;
+
+            if (! AudioExport::saveWavFile (file, options))
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Die WAV-Datei konnte nicht gespeichert werden.", this);
+        });
+}
+
+void Editor::exportMidi()
+{
+    const auto options = processor.exportOptions();
     // FileChooser muss als Member leben, bis der Callback zurueckkommt.
     fileChooser = std::make_unique<juce::FileChooser> (
         "MIDI-Zyklus speichern",
@@ -569,9 +600,10 @@ void Editor::resized()
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (148);
+                              .removeFromRight (202);
         exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 2));
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 2));
+        wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
     }
 
     for (const auto& entry : controlCaptions)

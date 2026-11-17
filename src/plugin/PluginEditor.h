@@ -147,7 +147,7 @@ private:
     std::set<int> pressedKeys;
     std::map<int, int> heldNotes; // Tastencode -> MIDI-Note
 
-    // Export (M1/M2, Decision 84/85): nur Standalone, Knopf in der
+    // Export (M1/M2/M3, Decision 84/85/86): nur Standalone, Knopf in der
     // Steps-Titelzeile. Drag & Drop erzeugt eine temporaere .mid-Datei.
     class MidiDragButton final : public juce::TextButton
     {
@@ -177,8 +177,10 @@ private:
 
     void exportMidi();
     void dragMidi();
+    void exportWav();
     juce::TextButton exportButton { "EXPORT" };
     MidiDragButton dragButton { "DRAG" };
+    juce::TextButton wavButton { "WAV" };
     juce::File lastExportedFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
 

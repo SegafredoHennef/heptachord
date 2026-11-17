@@ -361,3 +361,18 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Heptachord_<Grundton>_<Skala>_<Rate>.mid in ASCII
     (z. B. Heptachord_C_Dur_1-8.mid). JUCE 9: kein modales
     FileChooser/MessageBox (launchAsync/showMessageBoxAsync).
+
+## Runde 16 (WAV-Export M3)
+
+87. **M3 - WAV-Export des Test-Synths** - Der Standalone rendert einen
+    Zyklus durch den Test-Synth (Saegezahn + Tiefpass + ADSR) und schreibt
+    ein 16-Bit-WAV (src/plugin/AudioExport.cpp). JUCE 9: Stream-Ownership
+    durch den AudioFormatWriter (createWriterFor mit unique_ptr<OutputStream>),
+    da der deprecated Raw-Pointer-Overload den Stream loescht und einen
+    Stack-FileOutputStream doppelt freigeben wuerde. Render ueber einen
+    einzigen Block (alle Events mit absoluten Sample-Positionen), 2 Sekunden
+    Tail fuer ausklingende Noten. "WAV"-Knopf rechts in der Steps-
+    Titelzeile, standalone-only, analog zu EXPORT/DRAG. Dateiname
+    Heptachord_<Grundton>_<Skala>_<Rate>.wav (ASCII). Tests in
+    tests/test_audioexport.cpp (gueltiges WAV, Peak > 0, leerer Zyklus,
+    Dateiname).

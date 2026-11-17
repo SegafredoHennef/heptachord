@@ -2,6 +2,18 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.4
+
+- WAV-Export im Standalone: einen Zyklus durch den Test-Synth rendern und
+  als 16-Bit-WAV speichern (src/plugin/AudioExport.cpp, M3). "WAV"-Knopf
+  in der Steps-Titelzeile, standalone-only. Dateiname
+  `Heptachord_<Grundton>_<Skala>_<Rate>.wav` (ASCII).
+- Prüfung: 146 Testfälle / 15505 Assertions, `ctest --preset ninja` 100 %,
+  pluginval `--strictness-level 5` SUCCESS.
+
+ZIP `Heptachord-0.1.4-win.zip` (5,2 MB), SHA-256:
+`64EE909D6A0E0AEF876F4E23627A45C8547AE9FDD176231014CA34290439D9D3`
+
 ## v0.1.3
 
 - MIDI-Export im Standalone: ein Zyklus als Standard-MIDI Format 1 (PPQ 480,
