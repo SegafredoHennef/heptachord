@@ -2,6 +2,21 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.1
+
+- Fix: Die QWERTZ-Mini-Klaviatur im Standalone blieb bei echter Tastatur
+  stumm — es wurden nur Zeichencodes (`'a'..'z'`) gemappt, echte Tasten
+  liefern aber VK-Codes (`'A'..'Z'`); nur die Leertaste wirkte.
+  `mapKey` normalisiert die Codes jetzt; Regressionstest ergänzt
+  (Entscheidung 81).
+- MIDI-Eingang, Presets, Skala und Engine waren nicht betroffen.
+
+Prüfung: 120 Testfälle / 3054 Assertions, `ctest --preset ninja` 100 %,
+pluginval `--strictness-level 5` SUCCESS.
+
+ZIP `Heptachord-0.1.1-win.zip` (4,6 MB), SHA-256:
+`4637B4D4E118520C6D653C276A0109ABBB0C1B4AE13C30C5D2A37FB9DADF0710`
+
 ## v0.1.0
 
 - Signalweg: 12 Eingangstöne × 8 Skalen × 4 Stimmen, diatonische Intervalle,
