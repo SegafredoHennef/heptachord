@@ -277,3 +277,15 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Clock-Quelle: die Position wird einmal uebernommen, danach laeuft der
     Fallback (120 BPM, manueller Transport). Der Timeout verhindert, dass ein
     ausgeschalteter Master das Plugin einfriert.
+
+## Runde 13 (Bugfix Standalone-Klaviatur)
+
+81. **VK-Codes normalisieren** - juce::KeyPress liefert auf Windows bei
+    echter Tastatureingabe WM_KEYDOWN-Werte (VK-Codes, 'A'..'Z' = 65..90);
+    Zeichencodes ('a'..'z') erreichen keyPressed nur ueber Texteingabe-Pfade,
+    da JUCE TranslateMessage nur mit fokussiertem Text-Input-Target aufruft.
+    mapKey normalisiert daher VK-Codes auf die Zeichencodes der Tabelle.
+    Regressionstest in tests/test_computerkeyboard.cpp. Betroffen war nur
+    die Standalone-Mini-Klaviatur (v0.1.0: tot, nur Leertaste wirkte);
+    MIDI-Eingang, Presets, Skala und Engine waren korrekt (Ende-zu-Ende
+    mit keybd_event-Probe verifiziert).

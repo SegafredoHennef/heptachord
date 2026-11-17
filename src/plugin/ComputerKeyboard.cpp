@@ -44,6 +44,13 @@ int noteFor (int keyCode, int octave) noexcept
 
 KeyAction mapKey (int keyCode, int octave) noexcept
 {
+    // Echte Tastaturen liefern auf Windows WM_KEYDOWN mit VK-Codes
+    // ('A'..'Z' = 65..90); Zeichencodes ('a'..'z' = 97..122) erreichen
+    // keyPressed nur ueber Texteingabe-Pfade. Normalisiert wird auf die
+    // Zeichencodes der Tabelle, damit beide Wege dieselbe Taste bedienen.
+    if (keyCode >= 'A' && keyCode <= 'Z')
+        keyCode += 'a' - 'A';
+
     if (const int note = noteFor (keyCode, octave); note >= 0)
         return { KeyAction::Kind::note, note };
 

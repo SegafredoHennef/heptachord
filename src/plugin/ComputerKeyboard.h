@@ -6,8 +6,9 @@ namespace heptachord
 // QWERTZ-freundliche Mini-Klaviatur fuer den Standalone (nur Plugin-Schicht,
 // ADR 0007). Reine Abbildungstabelle ohne JUCE-GUI.
 //
-// Die Tastencodes sind die Zeichencodes, wie sie juce::KeyPress auf Windows
-// liefert - also die Beschriftung der Taste, layout-unabhaengig. Dadurch
+// Die Tabelle erwartet Zeichencodes ('a'..'z'); mapKey normalisiert die
+// VK-Codes echter Tastaturen ('A'..'Z' = 65..90) davor, denn juce::KeyPress
+// liefert auf Windows WM_KEYDOWN-Werte (VK), nicht WM_CHAR-Werte. Dadurch
 // funktionieren QWERTY und QWERTZ ohne Erkennung:
 //
 //   A S D F G H J K  ->  C D E F G A B C  (je Oktave +12)
