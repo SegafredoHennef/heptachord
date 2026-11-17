@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Erzeugt die 8 Factory-Presets für Heptachord.
+"""Erzeugt die 96 Factory-Presets fuer Heptachord (12 Grundtoene x 8 Skalen).
 
-Jedes Preset verwendet eine andere Skala und ein musikalisch
-interessantes Step-Muster, damit die Klänge vielfaeltig sind.
+Jede Skala hat ein musikalisch interessantes Step-Muster ("Charakter",
+Decision 82); die 96 Presets setzen dasselbe Muster an allen 12
+chromatischen Grundtoenen um - nur `root` aendert sich. Die Anzeigenamen
+(German-Kanon-Form, Grundton zuerst) leiten sich im Editor aus root + Skala
++ Bezeichnungsmodus ab; der JSON-`name` bleibt die deutsche Kanon-Form.
+
+Achtung: Overrides muessen die exakten Parameter-IDs (mit Punkt) verwenden,
+z. B. "s3.mode" - unbekannte Schluessel wie "s3_mode" wuerden beim Laden
+still ignoriert (Preset::fromJson).
 """
 import json
 import os
 
-# Parameter-IDs aus ParameterTable.h (Reihenfolge = Golden File)
+# Parameter-IDs aus ParameterTable.h (Reihenfolge = Golden File).
+# names.mode wird bewusst NICHT in Presets geschrieben (Decision 83).
 PARAM_IDS = [
     "root", "scale", "rate", "direction", "swing", "slack", "latch",
     "output.mode", "reset",
@@ -23,6 +31,40 @@ for i in range(1, 9):
         f"s{i}.probability", f"s{i}.ratchet",
         f"s{i}.v1", f"s{i}.v2", f"s{i}.v3", f"s{i}.v4",
     ])
+
+# Deutsche Kanon-Form (Grundton zuerst), Anzeige folgt names.mode.
+ROOT_NAMES = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "H"]
+ROOT_SLUGS = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "h"]
+SCALE_NAMES = ["Dur", "Moll", "Harmonisch Moll", "Melodisch Moll",
+               "Dorisch", "Phrygisch", "Lydisch", "Mixolydisch"]
+SCALE_SLUGS = ["dur", "moll", "harmonisch_moll", "melodisch_moll",
+               "dorisch", "phrygisch", "lydisch", "mixolydisch"]
+
+# Charakter-Muster pro Skala - exakt die Overrides der bisherigen Presets
+# p1..p8 (v0.1.0/v0.1.1), jetzt mit den echten Parameter-IDs (Punkt statt
+# Unterstrich). Reihenfolge beibehalten.
+SCALE_PATTERNS = [
+    # Dur: klassisch, vorwaerts, alle Steps aktiv
+    {},
+    # Moll: Swing 50 %, Step 3+4 als Rest/Hold fuer Atmung, Akzente
+    {"swing": 50.0, "s3.mode": 2, "s4.mode": 1, "s5.velocity": 120.0, "s7.velocity": 80.0},
+    # Harmonisch Moll: PingPong, 1/4, Spread weiter, versetzte Offsets
+    {"rate": 4, "direction": 2, "harm.spread": 0.5, "s2.offset": 1, "s6.offset": -1},
+    # Melodisch Moll: Slack, Ratchet auf Step 8, Hold auf Step 5, laengeres Gate
+    {"slack": 15.0, "s8.mode": 3, "s8.ratchet": 4, "s5.mode": 1, "h3.gate": 70.0},
+    # Dorisch: modal, 1/6, Wahrscheinlichkeiten, versetzte Offsets
+    {"rate": 3, "s3.probability": 50.0, "s7.probability": 75.0, "s2.offset": 2, "s6.offset": -2},
+    # Phrygisch: schnell (1/16), Ratchet auf Step 1, Pause, enge grade
+    {"rate": 0, "s1.mode": 3, "s1.ratchet": 3, "s4.mode": 2,
+     "h1.degree": 1, "h2.degree": 3, "h3.degree": 5},
+    # Lydisch: vertraeumt, 1/4, Hold-Pads, lange Gates, enger Spread
+    {"rate": 4, "s2.mode": 1, "s5.mode": 1, "s7.mode": 1,
+     "h1.gate": 80.0, "h2.gate": 80.0, "h3.gate": 80.0, "harm.spread": 0.2},
+    # Mixolydisch: Blues/Rock, rueckwaerts, Akzente
+    {"direction": 1, "s1.velocity": 130.0, "s4.velocity": 120.0,
+     "s5.velocity": 120.0, "s8.velocity": 130.0,
+     "h1.degree": 2, "h2.degree": 3, "h3.degree": 5},
+]
 
 # Default-Werte aus parameters.toml (Choice-Parameter als Index!)
 DEFAULTS = {
@@ -49,97 +91,31 @@ for i in range(1, 9):
     DEFAULTS[f"s{i}.v3"] = True
     DEFAULTS[f"s{i}.v4"] = True
 
-def preset(name, scale, **overrides):
+
+def preset(root, scale):
+    """Ein Preset: Grundton root (0..11) + Skala scale (0..7) + Charakter."""
     params = dict(DEFAULTS)
+    params["root"] = root
     params["scale"] = scale
-    for k, v in overrides.items():
-        params[k] = v
+    for key, value in SCALE_PATTERNS[scale].items():
+        params[key] = value
+    name = f"{ROOT_NAMES[root]} {SCALE_NAMES[scale]}"
     return {"schemaVersion": 1, "name": name, "parameters": params}
 
-# 1. C Dur — klassisch, vorwärts, alle Steps aktiv
-p1 = preset("C Dur", 0)
-
-# 2. C Moll — Moll-Tonart, Swing 50 %, Step 3+4 als Hold/Rest für Atmung
-p2 = preset("C Moll", 1,
-    swing=50.0,
-    s3_mode=2,  # Rest
-    s4_mode=1,  # Hold
-    s5_velocity=120.0,  # Akzent
-    s7_velocity=80.0,   # leiser
-)
-
-# 3. C Harmonisch Moll — PingPong, langsamerer Rate, Spread weiter
-p3 = preset("C Harmonisch Moll", 2,
-    rate=4,  # 1/4
-    direction=2,  # PingPong
-    harm_spread=0.5,
-    s2_offset=1,  # erhöhter zweiter Step
-    s6_offset=-1,
-)
-
-# 4. C Melodisch Moll — Slack für entspannten Feel, Ratchet auf Step 8
-p4 = preset("C Melodisch Moll", 3,
-    slack=15.0,
-    s8_mode=3,  # Ratchet
-    s8_ratchet=4,
-    s5_mode=1,  # Hold
-    h3_gate=70.0,
-)
-
-# 5. C Dorisch — modal, 1/6 Rate, Wahrscheinlichkeit auf manchen Steps
-p5 = preset("C Dorisch", 4,
-    rate=3,  # 1/6
-    s3_probability=50.0,
-    s7_probability=75.0,
-    s2_offset=2,
-    s6_offset=-2,
-)
-
-# 6. C Phrygisch — schnell (1/16), spanisch, Ratchet auf Step 1
-p6 = preset("C Phrygisch", 5,
-    rate=0,  # 1/16
-    s1_mode=3,  # Ratchet
-    s1_ratchet=3,
-    s4_mode=2,  # Rest
-    h1_degree=1,  # Halbton-Schritt für phrygischen Charakter
-    h2_degree=3,
-    h3_degree=5,
-)
-
-# 7. C Lydisch — verträumt, 1/4 Rate, Hold-Modus für Pads
-p7 = preset("C Lydisch", 6,
-    rate=4,  # 1/4
-    s2_mode=1,  # Hold
-    s5_mode=1,  # Hold
-    s7_mode=1,  # Hold
-    h1_gate=80.0,
-    h2_gate=80.0,
-    h3_gate=80.0,
-    harm_spread=0.2,
-)
-
-# 8. C Mixolydisch — Blues/Rock, rückwärts, Akzente
-p8 = preset("C Mixolydisch", 7,
-    direction=1,  # Rückwärts
-    s1_velocity=130.0,
-    s4_velocity=120.0,
-    s5_velocity=120.0,
-    s8_velocity=130.0,
-    h1_degree=2,
-    h2_degree=3,  # kleine Terz für Mixolydisch-Charakter
-    h3_degree=5,
-)
-
-presets = [p1, p2, p3, p4, p5, p6, p7, p8]
 
 out_dir = os.path.join(os.path.dirname(__file__), "..", "presets")
 os.makedirs(out_dir, exist_ok=True)
 
-for i, p in enumerate(presets, 1):
-    filename = f"heptachord_{i:02d}_{p['name'].lower().replace(' ', '_')}.heptachord"
-    path = os.path.join(out_dir, filename)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(p, f, indent=2, ensure_ascii=False)
-    print(f"  {filename}")
+count = 0
+for root in range(12):
+    for scale in range(8):
+        slot = root * 8 + scale + 1  # stabile chromatische ID (Decision 82)
+        p = preset(root, scale)
+        filename = f"heptachord_{slot:02d}_{ROOT_SLUGS[root]}_{SCALE_SLUGS[scale]}.heptachord"
+        path = os.path.join(out_dir, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(p, f, indent=2, ensure_ascii=False)
+        print(f"  {filename}")
+        count += 1
 
-print(f"\n{len(presets)} Factory-Presets erzeugt.")
+print(f"\n{count} Factory-Presets erzeugt.")

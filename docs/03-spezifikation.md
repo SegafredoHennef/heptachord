@@ -531,7 +531,8 @@ Blocks.
 - Parameter-IDs sind eingefroren (`tests/parameter_ids.txt`, Entscheidung 40).
   Eine Änderung braucht eine `schemaVersion`-Erhöhung **und** eine
   Migrationsregel im Preset-Loader.
-- Acht Factory-Presets, je eines pro Skala (Entscheidung 19).
+- 96 Factory-Presets: 12 Grundtöne × 8 Skalen, je Skala ein Charakter-Muster,
+  das nur im Grundton transponiert (Entscheidungen 19 und 82).
 
 ---
 

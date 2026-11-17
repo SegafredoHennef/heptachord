@@ -16,7 +16,7 @@
     "thru.velocity": 100.0,
     "thru.channel": 1,
     "harm.velocity": 100.0,
-    "harm.spread": 0.3,
+    "harm.spread": 0.5,
     "h1.enable": true,
     "h1.degree": 2,
     "h1.octave": 0,
@@ -50,7 +50,7 @@
     "s1.v4": true,
     "s2.active": true,
     "s2.mode": 0,
-    "s2.offset": 0,
+    "s2.offset": 1,
     "s2.velocity": 100.0,
     "s2.probability": 100.0,
     "s2.ratchet": 2,
@@ -90,7 +90,7 @@
     "s5.v4": true,
     "s6.active": true,
     "s6.mode": 0,
-    "s6.offset": 0,
+    "s6.offset": -1,
     "s6.velocity": 100.0,
     "s6.probability": 100.0,
     "s6.ratchet": 2,
@@ -117,9 +117,6 @@
     "s8.v1": true,
     "s8.v2": true,
     "s8.v3": true,
-    "s8.v4": true,
-    "harm_spread": 0.5,
-    "s2_offset": 1,
-    "s6_offset": -1
+    "s8.v4": true
   }
 }

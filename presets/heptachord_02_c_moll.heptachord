@@ -59,7 +59,7 @@
     "s2.v3": true,
     "s2.v4": true,
     "s3.active": true,
-    "s3.mode": 0,
+    "s3.mode": 2,
     "s3.offset": 0,
     "s3.velocity": 100.0,
     "s3.probability": 100.0,
@@ -69,7 +69,7 @@
     "s3.v3": true,
     "s3.v4": true,
     "s4.active": true,
-    "s4.mode": 0,
+    "s4.mode": 1,
     "s4.offset": 0,
     "s4.velocity": 100.0,
     "s4.probability": 100.0,
@@ -81,7 +81,7 @@
     "s5.active": true,
     "s5.mode": 0,
     "s5.offset": 0,
-    "s5.velocity": 100.0,
+    "s5.velocity": 120.0,
     "s5.probability": 100.0,
     "s5.ratchet": 2,
     "s5.v1": true,
@@ -101,7 +101,7 @@
     "s7.active": true,
     "s7.mode": 0,
     "s7.offset": 0,
-    "s7.velocity": 100.0,
+    "s7.velocity": 80.0,
     "s7.probability": 100.0,
     "s7.ratchet": 2,
     "s7.v1": true,
@@ -117,10 +117,6 @@
     "s8.v1": true,
     "s8.v2": true,
     "s8.v3": true,
-    "s8.v4": true,
-    "s3_mode": 2,
-    "s4_mode": 1,
-    "s5_velocity": 120.0,
-    "s7_velocity": 80.0
+    "s8.v4": true
   }
 }

@@ -37,9 +37,9 @@ id = "root"
 group = "global"
 label = "Grundton"
 type = "choice"
-choices = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "B"]
+choices = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "H"]
 default = "C"
-note = "Bezugston der Skala"
+note = "Bezugston der Skala; Anzeige folgt names.mode"
 
 [[param]]
 id = "scale"
@@ -113,6 +113,15 @@ group = "global"
 label = "Reset"
 type = "trigger"
 note = "setzt am nächsten Step-Rand auf Step 1"
+
+[[param]]
+id = "names.mode"
+group = "global"
+label = "Bezeichnungen"
+type = "choice"
+choices = ["Deutsch", "International (b)", "International (#)"]
+default = "Deutsch"
+note = "Anzeige-Konvention fuer Noten- und Skalennamen; wird beim Laden von Presets nicht ueberschrieben"
 
 # ------------------------------------------------------------------ Thru
 

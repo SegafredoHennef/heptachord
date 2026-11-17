@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstring>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -60,4 +61,29 @@ TEST_CASE ("Bereiche sind plausibel", "[params]")
         REQUIRE (p.defaultValue >= p.min);
         REQUIRE (p.defaultValue <= p.max);
     }
+}
+
+TEST_CASE ("Bezeichnungsmodus ist als Choice mit drei Eintraegen vorhanden", "[params]")
+{
+    REQUIRE (params::kNumParameters == 117);
+    REQUIRE (params::id_names_mode == 9);
+
+    const auto& p = params::kParams[static_cast<std::size_t> (params::id_names_mode)];
+    REQUIRE (std::string (p.id) == "names.mode");
+    REQUIRE (p.type == params::Type::Choice);
+    REQUIRE (p.numChoices == 3);
+    REQUIRE (std::string (p.choices[0]) == "Deutsch");
+    REQUIRE (std::string (p.choices[1]) == "International (b)");
+    REQUIRE (std::string (p.choices[2]) == "International (#)");
+    REQUIRE (p.defaultValue == 0.0f);
+}
+
+TEST_CASE ("Grundton-Choices enden auf Ais und H (deutsche Konvention)", "[params]")
+{
+    const auto& root = params::kParams[static_cast<std::size_t> (params::id_root)];
+    REQUIRE (root.numChoices == 12);
+    REQUIRE (std::string (root.choices[0]) == "C");
+    REQUIRE (std::string (root.choices[1]) == "Cis");
+    REQUIRE (std::string (root.choices[10]) == "Ais");
+    REQUIRE (std::string (root.choices[11]) == "H");
 }

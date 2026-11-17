@@ -19,7 +19,9 @@ class Processor;
 
 // Eine Seite, drei Zonen (Entscheidung 70): globale Leiste, Stimmen,
 // acht Step-Spalten. Alle Parameter sind gleichzeitig sichtbar.
-class Editor final : public juce::AudioProcessorEditor
+// Der Listener-Erbe verfolgt names.mode (Decision 83: Bezeichnungsmodus).
+class Editor final : public juce::AudioProcessorEditor,
+                     private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     explicit Editor (Processor& processorToEdit);
@@ -81,6 +83,13 @@ private:
     void applySelectedPreset();
     void applyPreset (const Preset& preset);
 
+    // Bezeichnungsmodus (Decision 83): nur Anzeige.
+    int currentNameMode() const;
+    juce::String presetDisplayName (const Preset& preset) const;
+    void rebuildPresetItems();
+    void refreshNameLabels();
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+
     Processor& processor;
     HeptachordLookAndFeel lookAndFeel;
 
@@ -95,6 +104,7 @@ private:
 
     // Globale Leiste.
     juce::ComboBox* presetBox = nullptr;
+    juce::ComboBox* namesBox = nullptr;
     juce::ComboBox* rootBox = nullptr;
     juce::ComboBox* scaleBox = nullptr;
     juce::ComboBox* rateBox = nullptr;

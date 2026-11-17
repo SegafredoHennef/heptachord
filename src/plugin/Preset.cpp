@@ -4,7 +4,9 @@
 
 #include <juce_core/juce_core.h>
 
+#include <algorithm>
 #include <stdexcept>
+#include <vector>
 
 namespace heptachord
 {
@@ -161,7 +163,14 @@ std::vector<Preset> Preset::factoryPresets()
         juce::Array<juce::File> files;
         presetsDir.findChildFiles (files, juce::File::findFiles, false, "*.heptachord");
 
-        for (const auto& file : files)
+        // Stabile chromatische Reihenfolge (Decision 82): die nummerierten
+        // Dateinamen sortieren; findChildFiles garantiert keine Ordnung.
+        std::vector<juce::File> sortedFiles (files.begin(), files.end());
+        std::sort (sortedFiles.begin(), sortedFiles.end(),
+                   [] (const juce::File& a, const juce::File& b)
+                   { return a.getFileName() < b.getFileName(); });
+
+        for (const auto& file : sortedFiles)
         {
             try
             {

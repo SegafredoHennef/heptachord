@@ -13,7 +13,7 @@ using Catch::Approx;
 
 namespace
 {
-// Eine Repraesentation der 116 Parameterwerte, die sich von den Defaults
+// Eine Repraesentation der 117 Parameterwerte, die sich von den Defaults
 // unterscheidet (Akzente, Ratchets, Wahrscheinlichkeiten, Masken).
 ParameterValues makeNonDefaultValues()
 {
@@ -98,7 +98,7 @@ TEST_CASE ("Default-Preset roundtripped ist identisch zu den Defaults", "[preset
 TEST_CASE ("Factory-Presets sind valide und laden ohne Fehler", "[preset]")
 {
     const auto presets = Preset::factoryPresets();
-    REQUIRE (presets.size() == 8);
+    REQUIRE (presets.size() == 96);
 
     for (const auto& preset : presets)
     {
@@ -127,6 +127,62 @@ TEST_CASE ("Factory-Presets sind valide und laden ohne Fehler", "[preset]")
             }
         }
     }
+}
+
+TEST_CASE ("Factory-Presets bilden die 96er-Matrix in chromatischer Reihenfolge", "[preset]")
+{
+    const auto presets = Preset::factoryPresets();
+    REQUIRE (presets.size() == 96);
+
+    // Slot i = Grundton * 8 + Skala (Decision 82).
+    for (int i = 0; i < 96; ++i)
+    {
+        const int root = i / 8;
+        const int scale = i % 8;
+        const auto& preset = presets[static_cast<std::size_t> (i)];
+
+        INFO ("Slot " << i << " erwartet Grundton " << root << ", Skala " << scale);
+        REQUIRE (preset.getValues()[static_cast<std::size_t> (params::id_root)] == static_cast<float> (root));
+        REQUIRE (preset.getValues()[static_cast<std::size_t> (params::id_scale)] == static_cast<float> (scale));
+    }
+}
+
+TEST_CASE ("Charakter-Pattern ist pro Skala identisch, nur der Grundton transponiert", "[preset]")
+{
+    const auto presets = Preset::factoryPresets();
+    REQUIRE (presets.size() == 96);
+
+    // Alle Werte von C-Dur bis H-Mixolydisch: Grundton C gegen Grundton F
+    // (Index 5) - ausser root darf nichts abweichen (Decision 82).
+    for (int scale = 0; scale < 8; ++scale)
+    {
+        const auto& fromC = presets[static_cast<std::size_t> (scale)];
+        const auto& fromF = presets[static_cast<std::size_t> (5 * 8 + scale)];
+
+        for (int i = 0; i < params::kNumParameters; ++i)
+        {
+            if (i == params::id_root)
+                continue;
+
+            INFO ("Skala " << scale << ", Parameter " << params::kParams[static_cast<std::size_t> (i)].id);
+            REQUIRE (fromC.getValues()[static_cast<std::size_t> (i)]
+                     == fromF.getValues()[static_cast<std::size_t> (i)]);
+        }
+    }
+}
+
+TEST_CASE ("Preset-Namen sind Grundton-zuerst in deutscher Kanon-Form", "[preset]")
+{
+    const auto presets = Preset::factoryPresets();
+    REQUIRE (presets.size() == 96);
+
+    REQUIRE (presets[0].getName() == "C Dur");
+    REQUIRE (presets[1].getName() == "C Moll");
+    REQUIRE (presets[7].getName() == "C Mixolydisch");
+    REQUIRE (presets[8].getName() == "Cis Dur");
+    REQUIRE (presets[10 * 8 + 1].getName() == "Ais Moll");   // Slot 81
+    REQUIRE (presets[11 * 8].getName() == "H Dur");          // Slot 89
+    REQUIRE (presets[95].getName() == "H Mixolydisch");
 }
 
 TEST_CASE ("Falsche schemaVersion wird abgelehnt", "[preset]")

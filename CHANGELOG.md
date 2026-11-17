@@ -2,6 +2,34 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.2
+
+- 96 Factory-Presets: alle 12 Grundtöne × 8 Skalen (statt acht, je eins
+  pro Skala). Je Skala bleibt das Charakter-Muster erhalten, nur der
+  Grundton transponiert; Dateinamen sind nummerierte stabile chromatische
+  IDs (`heptachord_89_h_dur.heptachord`), der Selektor lädt in stabiler
+  Reihenfolge (Entscheidung 82).
+- Bugfix im Preset-Generator: Overrides standen als tote
+  Unterstrich-Schlüssel (`s3_mode`) in den Dateien und wurden beim Laden
+  still ignoriert — die Charakter-Pattern der Factory-Presets waren nie
+  hörbar. Jetzt echte Parameter-IDs (`s3.mode`); `C Dur` bleibt
+  byte-identisch, die anderen C-Dateien bekommen das dokumentierte Muster
+  erstmals wirklich (Entscheidung 82).
+- Bezeichnungsmodus: Combo „Bezeichnungen" in der Kopfzeile — Deutsch
+  (C, Cis, …, Ais, H; Dur, Dorisch, …), International (b) (C, Db, …, Bb, B)
+  oder International (#) (C, C#, …, A#, B). Betrifft nur die Anzeige
+  (root/scale-Combos, Preset-Anzeigenamen); Presets speichern Indizes, ein
+  Preset-Wechsel setzt den Modus nicht zurück. Grundton-Choices enden
+  jetzt auf „Ais"/„H" (statt „B") (Entscheidung 83).
+- Literaturhinweise zur Musiktheorie: `docs/literatur.md` (verifizierte
+  freie PDFs, Zuordnung zu den Heptachord-Begriffen).
+
+Prüfung: 129 Testfälle / 14550 Assertions, `ctest --preset ninja` 100 %,
+pluginval `--strictness-level 5` SUCCESS.
+
+ZIP `Heptachord-0.1.2-win.zip` (4,7 MB), SHA-256:
+`75C9FA57913A769E250871331E9E6D15469ED7BFBEBAA7596177336F202B9A05`
+
 ## v0.1.1
 
 - Fix: Die QWERTZ-Mini-Klaviatur im Standalone blieb bei echter Tastatur

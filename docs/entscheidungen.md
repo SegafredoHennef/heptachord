@@ -289,3 +289,43 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     die Standalone-Mini-Klaviatur (v0.1.0: tot, nur Leertaste wirkte);
     MIDI-Eingang, Presets, Skala und Engine waren korrekt (Ende-zu-Ende
     mit keybd_event-Probe verifiziert).
+
+## Runde 14 (96er-Matrix + Bezeichnungsmodus)
+
+82. **96 Factory-Presets als Grundton-x-Skala-Matrix** - 12 Grundtoene x 8
+    Skalen, Slot i = Grundton*8 + Skala; Dateinamen sind nummerierte stabile
+    chromatische IDs mit deutschen Buchstaben-Slugs
+    (heptachord_89_h_dur.heptachord). Je Skala bleibt das Charakter-Muster
+    der bisherigen Presets p1..p8 erhalten, nur der Grundton transponiert.
+    Preset::factoryPresets() sortiert Dateien nach Dateinamen
+    (findChildFiles garantiert keine Ordnung); der JSON-`name` bleibt die
+    deutsche Kanon-Form (Grundton zuerst, z. B. "H Moll"), Anzeigenamen
+    leitet der Editor aus root + Skala + names.mode ab. Erzeugung nur ueber
+    tools/gen_presets.py. Bugfix dabei entdeckt und gefixt (User-Freigabe
+    Runde 87): die Overrides standen als tote Unterstrich-Schluessel
+    ("s3_mode") in den Dateien und wurden beim Laden still ignoriert - die
+    Charakter-Pattern der 8 Factory-Presets waren nie hoerbar. Der Generator
+    schreibt jetzt die echten IDs ("s3.mode"); heptachord_01_c_dur bleibt
+    byte-identisch (leeres Muster), 7 C-Dateien aendern Inhalt auf das
+    dokumentierte Muster. Tests: Matrix-Struktur, C-gegen-F-Pattern,
+    deutsche Kanon-Namen (test_preset.cpp).
+83. **names.mode - Bezeichnungsmodus als Anzeige-Option** - Ein Choice-
+    Parameter (Index 9, nach `reset` in der Global-Sektion) mit 3 Eintraegen:
+    Deutsch (C, Cis, ..., Ais, H; Dur, Dorisch, ...), International (b)
+    (C, Db, ..., Bb, B) und International (#) (C, C#, ..., A#, B). Default
+    Deutsch. Betrifft nur die Anzeige: root-/scale-Combo-Labels und
+    Preset-Anzeigenamen leiten sich ab (src/core/NoteNames.h); die Skalen
+    heißen international Major/Minor/Harmonic Minor/Melodic
+    Minor/Dorian/Phrygian/Lydian/Mixolydian. Preset-Wechsel setzt den Modus
+    nicht zurueck (applyPreset ueberspringt id_names_mode); keine eigene
+    Persistenz (Standalone: pro Sitzung, Host-Zustand im VST3 wie ueblich).
+    Platzierungs-Hinweis: ein `[[param]]` am toml-Dateiende haette Index 15
+    ergeben (Familien expandieren nach den [[param]]-Bloecken); die
+    Global-Sektion nach `reset` ist die saubere Stelle - IDs sind
+    eingefroren, nur der Index ist neu. Der bisherige 11. Ton "B" wurde zu
+    "H" repariert (Mischzustand). Kopfzeilen-Combo "Bezeichnungen" ohne
+    Beschriftung (ASCII-Schreibweise b/# in den Eintraegen), Untertitel
+    ohne "Stepwise Harmonizer" (Platz), Preset-Combo 200 -> 160 px,
+    namesBox 150 px. root/scale-Combos werden bei Moduswechsel per
+    ParameterListener + callAsync neu beschriftet; Items-Indices bleiben
+    stabil, damit die Attachments weiterbinden.

@@ -1,8 +1,11 @@
 #include "plugin/PluginEditor.h"
 
+#include "core/NoteNames.h"
 #include "core/ParameterTable.h"
 #include "plugin/ComputerKeyboard.h"
 #include "plugin/PluginProcessor.h"
+
+#include <functional>
 
 namespace heptachord
 {
@@ -27,6 +30,23 @@ juce::String voiceId (int index, const char* suffix)
 {
     return "h" + juce::String (index + 1) + "." + suffix;
 }
+
+// Bezeichnungsmodus (Decision 83): baut die Items einer Combo aus
+// Anzeige-Labels neu auf und erhaelt die Auswahl (Indices bleiben stabil).
+void refreshChoiceItems (juce::ComboBox* box, int count,
+                         const std::function<juce::String (int)>& labelFor)
+{
+    if (box == nullptr)
+        return;
+
+    const int selected = box->getSelectedItemIndex();
+    box->clear (juce::dontSendNotification);
+
+    for (int i = 0; i < count; ++i)
+        box->addItem (labelFor (i), i + 1);
+
+    box->setSelectedItemIndex (selected, juce::dontSendNotification);
+}
 } // namespace
 
 Editor::Editor (Processor& processorToEdit)
@@ -43,9 +63,6 @@ Editor::Editor (Processor& processorToEdit)
     presetBox->setJustificationType (juce::Justification::centredLeft);
     presetBox->setTooltip ("Factory-Preset laden");
     addAndMakeVisible (presetBox);
-
-    for (const auto& preset : factoryPresets)
-        presetBox->addItem (preset.getName(), presetBox->getNumItems() + 1);
 
     presetBox->setSelectedItemIndex (-1, juce::dontSendNotification);
     presetBox->onChange = [this] { applySelectedPreset(); };
@@ -67,11 +84,19 @@ Editor::Editor (Processor& processorToEdit)
     }
 
     updateTransportButton();
+
+    // Bezeichnungsmodus (Decision 83): Listener registrieren und die
+    // Anzeige-Labels einmal aufbauen (Default ist Deutsch).
+    processor.apvts.addParameterListener ("names.mode", this);
+    refreshNameLabels();
+
     setSize (kWindowWidth, kWindowHeight);
 }
 
 Editor::~Editor()
 {
+    processor.apvts.removeParameterListener ("names.mode", this);
+
     if (standalone)
         for (const auto& entry : heldNotes)
             processor.injectKeyboardNoteOff (entry.second);
@@ -162,6 +187,9 @@ void Editor::buildControls()
     harmSpreadKnob = &addKnob ("harm.spread", "Spread");
     latchButton = &addToggle ("latch", "LATCH");
     outputBox = &addChoice ("output.mode", "Ausgabe");
+
+    // Kopfzeile: Bezeichnungsmodus ohne Beschriftung (Decision 83).
+    namesBox = &addChoice ("names.mode", "");
 
     thruEnableButton = &addToggle ("thru.enable", "AKTIV");
     thruSnapButton = &addToggle ("thru.snap", "SNAP");
@@ -317,6 +345,9 @@ void Editor::applyPreset (const Preset& preset)
         if (i == params::id_reset) // Trigger wird nicht gespeichert (Nr. 67).
             continue;
 
+        if (i == params::id_names_mode) // Anzeige-Modus bleibt erhalten (Decision 83).
+            continue;
+
         const auto& p = params::kParams[static_cast<std::size_t> (i)];
         auto* parameter = processor.apvts.getParameter (p.id);
 
@@ -328,6 +359,66 @@ void Editor::applyPreset (const Preset& preset)
 
     // Preset-Wechsel beendet klingende Noten sofort (Spezifikation 8.2/8.3).
     processor.notifyPresetChanged();
+}
+
+int Editor::currentNameMode() const
+{
+    auto* parameter = processor.apvts.getParameter ("names.mode");
+
+    if (parameter == nullptr)
+        return notenames::kNameModeDeutsch;
+
+    return juce::roundToInt (parameter->convertFrom0to1 (parameter->getValue()));
+}
+
+juce::String Editor::presetDisplayName (const Preset& preset) const
+{
+    const auto& values = preset.getValues();
+    const int root = static_cast<int> (values[static_cast<std::size_t> (params::id_root)]);
+    const int scale = static_cast<int> (values[static_cast<std::size_t> (params::id_scale)]);
+    const int mode = currentNameMode();
+
+    return juce::String (notenames::rootDisplayLabel (root, mode)) + " "
+         + juce::String (notenames::scaleDisplayLabel (scale, mode));
+}
+
+void Editor::rebuildPresetItems()
+{
+    const int selected = presetBox->getSelectedItemIndex();
+    presetBox->clear (juce::dontSendNotification);
+
+    for (std::size_t i = 0; i < factoryPresets.size(); ++i)
+        presetBox->addItem (presetDisplayName (factoryPresets[i]), static_cast<int> (i) + 1);
+
+    presetBox->setSelectedItemIndex (selected, juce::dontSendNotification);
+}
+
+void Editor::refreshNameLabels()
+{
+    const int mode = currentNameMode();
+
+    refreshChoiceItems (rootBox, notenames::kNumRoots, [mode] (int i)
+                        { return juce::String (notenames::rootDisplayLabel (i, mode)); });
+
+    refreshChoiceItems (scaleBox, notenames::kNumScales, [mode] (int i)
+                        { return juce::String (notenames::scaleDisplayLabel (i, mode)); });
+
+    rebuildPresetItems();
+}
+
+void Editor::parameterChanged (const juce::String& parameterID, float /*newValue*/)
+{
+    if (parameterID != "names.mode")
+        return;
+
+    // Kann aus jedem Thread kommen (Host-Automation); UI-Aenderung auf den
+    // Message-Thread umleiten, SafePointer gegen geschlossenes Fenster.
+    juce::Component::SafePointer<Editor> safeThis { this };
+    juce::MessageManager::callAsync ([safeThis]
+    {
+        if (safeThis != nullptr)
+            safeThis->refreshNameLabels();
+    });
 }
 
 void Editor::paint (juce::Graphics& g)
@@ -344,7 +435,7 @@ void Editor::paint (juce::Graphics& g)
 
         g.setColour (HeptachordLookAndFeel::muted());
         g.setFont (juce::FontOptions (11.0f));
-        juce::String subtitle = "Stepwise Harmonizer - " + juce::String (params::kNumParameters) + " Parameter";
+        juce::String subtitle = juce::String (params::kNumParameters) + " Parameter";
 
         if (standalone)
         {
@@ -432,7 +523,9 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     if (standalone)
         transportButton.setBounds (buttons.removeFromRight (112).reduced (2, 6));
 
-    presetBox->setBounds (buttons.removeFromRight (200).reduced (2, 6));
+    // Bezeichnungsmodus links neben dem Preset-Selektor (Decision 83).
+    namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
+    presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)

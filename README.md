@@ -9,13 +9,15 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: M6 - MIDI-Clock.** Signalweg (M2b), Oberfläche (M3), Presets (M5)
-und MIDI-Clock sind fertig: alle 115 Parameter liegen auf einer Seite (globale
+**Status: v0.1.2.** Signalweg (M2b), Oberfläche (M3), Presets (M5)
+und MIDI-Clock sind fertig: alle 117 Parameter liegen auf einer Seite (globale
 Leiste, Stimmen, acht Step-Spalten), das Erscheinungsbild ist ein eigenes
-dunkles Look-and-Feel, acht Factory-Presets laden aus der Kopfzeile. Der
-Standalone folgt im Play-Modus dem ersten MIDI-Eingang als Clock-Master
+dunkles Look-and-Feel, 96 Factory-Presets (12 Grundtöne × 8 Skalen) laden
+aus der Kopfzeile, und der Bezeichnungsmodus schaltet die Noten- und
+Skalennamen zwischen Deutsch, International (b) und International (#) um.
+Der Standalone folgt im Play-Modus dem ersten MIDI-Eingang als Clock-Master
 (FA/FC/FB, 30–300 BPM, 2 s Timeout → Fallback auf 120 BPM); ohne Clock läuft
-der manuelle Transport wie bisher. Release steht noch aus.
+der manuelle Transport wie bisher.
 
 ## Struktur
 
@@ -54,13 +56,13 @@ stoppt den internen Transport (120 BPM).
 
 ## Download
 
-Aktuelle Version: **v0.1.1** (`Heptachord-0.1.1-win.zip`, SHA-256 steht im
+Aktuelle Version: **v0.1.2** (`Heptachord-0.1.2-win.zip`, SHA-256 steht im
 `CHANGELOG.md`).
 
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
   (z. B. `C:\Program Files\Common Files\VST3`), dann einmal scannen lassen.
 - `Standalone/Heptachord.exe` — direkt startbar, keine Extra-DLLs nötig.
-- `presets/` — die acht Factory-Presets; der Ordner bleibt neben den
+- `presets/` — die 96 Factory-Presets; der Ordner bleibt neben den
   Programmdateien liegen und wird von beiden Varianten gefunden.
 
 **Keine Signierung** (Entscheidung 48): Windows zeigt beim ersten Start des

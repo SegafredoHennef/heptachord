@@ -31,7 +31,8 @@ Note.
 _Avoid_: Source, Ausgangsnote, Trigger-Note
 
 **Grundton**:
-Der Bezugston der gewählten Skala (C…B).
+Der Bezugston der gewählten Skala (C…H in deutscher Konvention; die Anzeige
+folgt dem Bezeichnungsmodus).
 _Avoid_: Root Note, Key, Tonika
 
 **Skala**:
@@ -39,6 +40,13 @@ Eine der acht Stufentabellen (Dur, Moll, Harmonisch Moll, Melodisch Moll,
 Dorisch, Phrygisch, Lydisch, Mixolydisch), die festlegt, welche Halbtonstufen
 innerhalb einer Oktave skaleneigen sind.
 _Avoid_: Mode, Tonart, Temperament
+
+**Bezeichnungsmodus**:
+Die Anzeige-Konvention für Noten- und Skalennamen: Deutsch (C, Cis, …, Ais, H;
+Dur, Dorisch, …), International (b) (C, Db, …, Bb, B) oder International (#)
+(C, C#, …, A#, B). Betrifft nur die Anzeige — Presets speichern Indizes, und
+ein Preset-Wechsel setzt den Modus nicht zurück.
+_Avoid_: Sprache, Lokalisierung, Enharmonik
 
 **Skalengrad**:
 Die Position eines Tons innerhalb der Skala, gezählt in Skalenschritten statt
