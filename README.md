@@ -52,6 +52,22 @@ einer Oktave, Y oder Z = Oktave runter, X = Oktave rauf, Leertaste =
 Transport), alternativ über MIDI-Eingabe. Leertaste oder der Knopf startet und
 stoppt den internen Transport (120 BPM).
 
+## Download
+
+Aktuelle Version: **v0.1.0** (`Heptachord-0.1.0-win.zip`, SHA-256 steht im
+`CHANGELOG.md`).
+
+- `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
+  (z. B. `C:\Program Files\Common Files\VST3`), dann einmal scannen lassen.
+- `Standalone/Heptachord.exe` — direkt startbar, keine Extra-DLLs nötig.
+- `presets/` — die acht Factory-Presets; der Ordner bleibt neben den
+  Programmdateien liegen und wird von beiden Varianten gefunden.
+
+**Keine Signierung** (Entscheidung 48): Windows zeigt beim ersten Start des
+Standalone den SmartScreen-Hinweis „Windows hat deine Datei geschützt" —
+„Mehr Informationen" und dann „Trotzdem ausführen" wählen. Das ist der
+übliche Hinweis für unsignierte, öffentlich verteilte Programme.
+
 ## Bauen (in M0 verifiziert)
 
 Voraussetzungen: Windows 10/11, Visual Studio 2026 Build Tools mit

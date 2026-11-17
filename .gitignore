@@ -12,3 +12,6 @@ CMakeUserPresets.json
 .cache/
 __pycache__/
 *.pyc
+
+# Release-Artefakte
+release/
