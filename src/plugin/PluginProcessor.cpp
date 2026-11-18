@@ -402,6 +402,59 @@ void Processor::stopPlayback() noexcept
         m_recorderState.store (0, std::memory_order_relaxed);
 }
 
+bool Processor::saveRecordingToFile (const juce::File& file)
+{
+    if (m_recording.empty())
+        return false;
+
+    juce::FileOutputStream stream (file);
+    if (! stream.openedOk())
+        return false;
+
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote (midirender::kPpq);
+
+    std::array<juce::MidiMessageSequence, 4> tracks {};
+
+    // Tempo + Takt in Spur 0.
+    {
+        const double bpm = m_binding.get (params::id_tempo);
+        const int microsPerQuarter = juce::jlimit (
+            1, 0x7fffffff,
+            static_cast<int> (std::llround (60000000.0 / (bpm > 0.0 ? bpm : 120.0))));
+        auto tempo = juce::MidiMessage::tempoMetaEvent (microsPerQuarter);
+        tempo.setTimeStamp (0.0);
+        tracks[0].addEvent (tempo);
+
+        auto signature = juce::MidiMessage::timeSignatureMetaEvent (4, 4);
+        signature.setTimeStamp (0.0);
+        tracks[0].addEvent (signature);
+    }
+
+    const std::lock_guard<std::mutex> lock (m_recordingMutex);
+    for (const auto& ev : m_recording)
+    {
+        const int trackIndex = juce::jlimit (0, 3, ev.channel - 1);
+        auto msg = ev.noteOn
+            ? juce::MidiMessage::noteOn (ev.channel, ev.pitch, static_cast<juce::uint8> (juce::jlimit (1, 127, ev.velocity)))
+            : juce::MidiMessage::noteOff (ev.channel, ev.pitch);
+        msg.setTimeStamp (static_cast<double> (ev.tick));
+        tracks[static_cast<std::size_t> (trackIndex)].addEvent (msg);
+    }
+
+    for (auto& track : tracks)
+    {
+        track.sort();
+        midiFile.addTrack (track);
+    }
+
+    if (! midiFile.writeTo (stream, 1))
+        return false;
+
+    stream.flush();
+    return true;
+}
+
 void Processor::clearRecording() noexcept
 {
     if (isStandalone())

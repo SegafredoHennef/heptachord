@@ -108,7 +108,38 @@ Editor::Editor (Processor& processorToEdit)
         addAndMakeVisible (playButton);
 
         stopButton.setTooltip ("Aufnahme und Wiedergabe stoppen");
-        stopButton.onClick = [this] { processor.stopRecording(); processor.stopPlayback(); updateRecorderButtons(); };
+        stopButton.onClick = [this] {
+            const bool wasRecording = processor.isRecording();
+            processor.stopRecording();
+            processor.stopPlayback();
+            updateRecorderButtons();
+
+            // Nach dem Stoppen der Aufnahme: Speichern-Dialog anbieten.
+            if (wasRecording && processor.hasRecording())
+            {
+                auto chooser = std::make_shared<juce::FileChooser> (
+                    "Aufnahme speichern",
+                    juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getChildFile ("Heptachord_Recording.mid"),
+                    "*.mid");
+
+                chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                    [this, chooser] (const juce::FileChooser& fc)
+                    {
+                        auto file = fc.getResult();
+                        if (file != juce::File {})
+                        {
+                            if (! file.hasFileExtension (".mid"))
+                                file = file.withFileExtension (".mid");
+                            if (! processor.saveRecordingToFile (file))
+                            {
+                                juce::NativeMessageBox::showMessageBoxAsync (
+                                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                                    "Die Aufnahme konnte nicht gespeichert werden.", this);
+                            }
+                        }
+                    });
+            }
+        };
         addAndMakeVisible (stopButton);
 
         clearButton.setTooltip ("Aufnahme loeschen");

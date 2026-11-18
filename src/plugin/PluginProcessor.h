@@ -126,6 +126,9 @@ public:
     bool hasRecording() const noexcept { return ! m_recording.empty(); }
     std::int64_t recordingLengthTicks() const noexcept { return m_recordingLength.load (std::memory_order_relaxed); }
 
+    // Aufnahme als Standard-MIDI-Datei speichern (alle aufgenommenen Events).
+    bool saveRecordingToFile (const juce::File& file);
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
