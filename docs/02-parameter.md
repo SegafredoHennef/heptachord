@@ -51,21 +51,21 @@ multiplikativ, geklemmt auf 1…127.
 
 | ID | Label | Typ | Bereich | Default | Anmerkung |
 |---|---|---|---|---|---|
-| `h1.enable` | H1 · Aktiv | bool | an/aus | aus |  |
+| `h1.enable` | H1 · Aktiv | bool | an/aus | an |  |
 | `h1.degree` | H1 · Grad | int | -14…14 | 2 | diatonische Skalenschritte |
 | `h1.octave` | H1 · Oktave | int | -3…3 | 0 | chromatisch, nach degree |
 | `h1.velocity` | H1 · Velocity | float | 0…200 % | 100 % | wird von follow überstimmt |
 | `h1.follow` | H1 · Vel. folgt | bool | an/aus | an | an = velocity wird ignoriert |
 | `h1.gate` | H1 · Gate | float | 5…100 % | 50 % | relativ zur Step-Länge, an der Step-Kante geklemmt |
 | `h1.channel` | H1 · Kanal | int | 1…16 | 2 | nur im Modus Multi |
-| `h2.enable` | H2 · Aktiv | bool | an/aus | aus |  |
+| `h2.enable` | H2 · Aktiv | bool | an/aus | an |  |
 | `h2.degree` | H2 · Grad | int | -14…14 | 4 | diatonische Skalenschritte |
 | `h2.octave` | H2 · Oktave | int | -3…3 | 0 | chromatisch, nach degree |
 | `h2.velocity` | H2 · Velocity | float | 0…200 % | 100 % | wird von follow überstimmt |
 | `h2.follow` | H2 · Vel. folgt | bool | an/aus | an | an = velocity wird ignoriert |
 | `h2.gate` | H2 · Gate | float | 5…100 % | 50 % | relativ zur Step-Länge, an der Step-Kante geklemmt |
 | `h2.channel` | H2 · Kanal | int | 1…16 | 3 | nur im Modus Multi |
-| `h3.enable` | H3 · Aktiv | bool | an/aus | aus |  |
+| `h3.enable` | H3 · Aktiv | bool | an/aus | an |  |
 | `h3.degree` | H3 · Grad | int | -14…14 | 6 | diatonische Skalenschritte |
 | `h3.octave` | H3 · Oktave | int | -3…3 | 0 | chromatisch, nach degree |
 | `h3.velocity` | H3 · Velocity | float | 0…200 % | 100 % | wird von follow überstimmt |

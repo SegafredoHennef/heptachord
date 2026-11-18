@@ -195,7 +195,7 @@ label = "H{n}"
 name = "enable"
 label = "Aktiv"
 type = "bool"
-default = false
+default = true
 
 [[family.param]]
 name = "degree"
