@@ -115,6 +115,8 @@ Editor::Editor (Processor& processorToEdit)
         clearButton.onClick = [this] { processor.clearRecording(); updateRecorderButtons(); };
         addAndMakeVisible (clearButton);
 
+        updateRecorderButtons();
+
         instrumentBox = combos.add (new juce::ComboBox());
         instrumentBox->setJustificationType (juce::Justification::centredLeft);
         instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
@@ -495,10 +497,26 @@ void Editor::updateRecorderButtons()
 {
     recButton.setButtonText (processor.isRecording() ? "REC ●" : "REC");
     playButton.setButtonText (processor.isPlaying() ? "PLAY ▶" : "PLAY");
+
+    // Farbliche Rueckmeldung: REC rot bei Aufnahme, PLAY gruen bei Wiedergabe.
+    recButton.setColour (juce::TextButton::buttonColourId,
+        processor.isRecording() ? juce::Colour (0xffcc3333) : HeptachordLookAndFeel::panelRaised());
+    recButton.setColour (juce::TextButton::buttonOnColourId,
+        processor.isRecording() ? juce::Colour (0xffcc3333) : HeptachordLookAndFeel::accent());
+    playButton.setColour (juce::TextButton::buttonColourId,
+        processor.isPlaying() ? juce::Colour (0xff33aa55) : HeptachordLookAndFeel::panelRaised());
+    playButton.setColour (juce::TextButton::buttonOnColourId,
+        processor.isPlaying() ? juce::Colour (0xff33aa55) : HeptachordLookAndFeel::accent());
+
     recButton.setEnabled (true);
     playButton.setEnabled (processor.hasRecording() || processor.isRecording());
     stopButton.setEnabled (processor.isRecording() || processor.isPlaying());
     clearButton.setEnabled (processor.hasRecording());
+
+    recButton.repaint();
+    playButton.repaint();
+    stopButton.repaint();
+    clearButton.repaint();
 }
 
 void Editor::exportNotes()
@@ -825,10 +843,10 @@ void Editor::resized()
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 1));
         wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
         notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
-        recButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
-        playButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
-        stopButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
-        clearButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
+        recButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
+        playButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
+        stopButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
+        clearButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
     }
 
     for (const auto& entry : controlCaptions)
