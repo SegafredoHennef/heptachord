@@ -39,8 +39,7 @@ void TestSynthInstrument::showEditor (juce::Component* /*parent*/)
 VstPluginInstrument::VstPluginInstrument()
 {
     m_formatManager = std::make_unique<juce::AudioPluginFormatManager>();
-    // Der FormatManager hat bereits alle verfuegbaren Formate (VST3 etc.)
-    // registriert. Wir suchen das VST3-Format bei Bedarf über getFormat().
+    juce::addDefaultFormatsToManager (*m_formatManager);
 }
 
 VstPluginInstrument::~VstPluginInstrument()
