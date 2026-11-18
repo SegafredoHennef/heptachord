@@ -65,7 +65,7 @@ Editor::Editor (Processor& processorToEdit)
     presetBox = combos.add (new juce::ComboBox());
     presetBox->setJustificationType (juce::Justification::centredLeft);
     presetBox->setTooltip ("Factory-Preset laden");
-    addAndMakeVisible (presetBox);
+    presetBox->setVisible (false);  // aus der Kopfzeile entfernt (redundant)
 
     presetBox->setSelectedItemIndex (-1, juce::dontSendNotification);
     presetBox->onChange = [this] { applySelectedPreset(); };
@@ -241,6 +241,7 @@ void Editor::buildControls()
 
     // Kopfzeile: Bezeichnungsmodus ohne Beschriftung (Decision 83).
     namesBox = &addChoice ("names.mode", "");
+    namesBox->setVisible (false);  // aus der Kopfzeile entfernt (redundant)
 
     thruEnableButton = &addToggle ("thru.enable", "AKTIV");
     thruSnapButton = &addToggle ("thru.snap", "SNAP");

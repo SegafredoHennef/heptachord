@@ -147,7 +147,7 @@ private:
     bool standalone = false;
 
     // Step-Highlight: aktueller Step (0..7, -1 = keiner) und die Spaltenbereiche.
-    int m_highlightedStep = -1;
+    int m_highlightedStep = 0;
     std::array<juce::Rectangle<int>, 8> m_stepColumnAreas {};
 
     // Tastatur des Standalones (QWERTZ-freundlich, siehe ComputerKeyboard.h).
