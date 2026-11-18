@@ -74,7 +74,6 @@ target_link_libraries(heptachord
     PRIVATE
         heptachord_core
         juce::juce_audio_utils
-        juce::juce_audio_plugin_client
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags
@@ -129,7 +128,6 @@ target_link_libraries(heptachord_tests PRIVATE
     Catch2::Catch2WithMain
     juce::juce_audio_basics
     juce::juce_audio_formats
-    juce::juce_audio_plugin_client
 )
 target_compile_definitions(heptachord_tests PRIVATE
     HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"

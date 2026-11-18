@@ -59,8 +59,6 @@ Editor::Editor (Processor& processorToEdit)
 
     buildControls();
 
-    factoryPresets = Preset::factoryPresets();
-
     presetBox = combos.add (new juce::ComboBox());
     presetBox->setJustificationType (juce::Justification::centredLeft);
     presetBox->setTooltip ("Factory-Preset laden");
@@ -116,7 +114,8 @@ Editor::Editor (Processor& processorToEdit)
         notesButton.setTooltip ("Notenfolge als MIDI + Text/CSV exportieren");
         notesButton.onClick = [this] { exportNotes(); };
 
-        addAndMakeVisible (instrumentBox);
+        instrumentBox = combos.add (new juce::ComboBox());
+        addAndMakeVisible (*instrumentBox);
         instrumentBox->setJustificationType (juce::Justification::centredLeft);
         instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
         instrumentBox->addItem ("Interner Synth", 1);
@@ -785,7 +784,7 @@ void Editor::resized()
     }
 
     // GUI-Zoom: gesamten Editor skaliieren (Standalone + VST3).
-    setTransform (juce::AffineTransform::scale (m_zoomFactor, m_zoomFactor));
+    //setTransform (juce::AffineTransform::scale (m_zoomFactor, m_zoomFactor));
 }
 
 void Editor::layoutHeader (juce::Rectangle<int> area)

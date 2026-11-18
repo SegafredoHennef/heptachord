@@ -1,6 +1,5 @@
 #include "plugin/InstrumentHost.h"
 
-#include <juce_audio_plugin_client/juce_audio_plugin_client.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
 namespace heptachord
@@ -38,9 +37,12 @@ void TestSynthInstrument::showEditor (juce::Component* /*parent*/)
 
 VstPluginInstrument::VstPluginInstrument()
 {
+    juce::File dbg ("C:/Temp/heptachord_debug.txt");
+    dbg.appendText ("\nVstPluginInstrument ctor start");
     m_formatManager = std::make_unique<juce::AudioPluginFormatManager>();
     // Der FormatManager hat bereits alle verfuegbaren Formate (VST3 etc.)
     // registriert. Wir suchen das VST3-Format bei Bedarf über getFormat().
+    dbg.appendText ("\nVstPluginInstrument ctor done");
 }
 
 VstPluginInstrument::~VstPluginInstrument()
@@ -146,12 +148,20 @@ juce::String VstPluginInstrument::getName() const
 
 std::unique_ptr<Instrument> createTestSynthInstrument()
 {
-    return std::make_unique<TestSynthInstrument>();
+    juce::File dbg ("C:/Temp/heptachord_debug.txt");
+    dbg.appendText ("\ncreateTestSynthInstrument start");
+    auto result = std::make_unique<TestSynthInstrument>();
+    dbg.appendText ("\ncreateTestSynthInstrument done");
+    return result;
 }
 
 std::unique_ptr<Instrument> createVstPluginInstrument()
 {
-    return std::make_unique<VstPluginInstrument>();
+    juce::File dbg ("C:/Temp/heptachord_debug.txt");
+    dbg.appendText ("\ncreateVstPluginInstrument start");
+    auto result = std::make_unique<VstPluginInstrument>();
+    dbg.appendText ("\ncreateVstPluginInstrument done");
+    return result;
 }
 
 } // namespace heptachord
