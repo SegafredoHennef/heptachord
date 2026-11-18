@@ -215,14 +215,29 @@ void Editor::buildControls()
     rootBox = &addChoice ("root", "Grundton");
     scaleBox = &addChoice ("scale", "Skala");
     rateBox = &addChoice ("rate", "Rate");
+    for (int i = 0; i < 17; ++i)
+        rateBox->addItem (juce::String (params::kChoices2[i]), i + 1);
+    rateBox->setSelectedItemIndex (2, juce::dontSendNotification);
+
+    outputBox = &addChoice ("output.mode", "Ausgabe");
+    outputBox->addItem ("Multi", 1);
+    outputBox->addItem ("Single", 2);
+    outputBox->setSelectedItemIndex (0, juce::dontSendNotification);
+
     directionBox = &addChoice ("direction", "Richtung");
+    // ComboBox manuell befuellen (AudioParameterChoice-Attachment populated
+    // die Items nicht automatisch).
+    for (int i = 0; i < 6; ++i)
+        directionBox->addItem (juce::String (params::kChoices3[i]), i + 1);
+    directionBox->setSelectedItemIndex (
+        static_cast<int> (processor.apvts.getRawParameterValue ("direction")->load ()),
+        juce::dontSendNotification);
     swingKnob = &addKnob ("swing", "Swing");
     slackKnob = &addKnob ("slack", "Slack");
     harmVelocityKnob = &addKnob ("harm.velocity", "Vel H1-H3");
     harmSpreadKnob = &addKnob ("harm.spread", "Spread");
     tempoKnob = &addKnob ("tempo", "Tempo");
     latchButton = &addToggle ("latch", "LATCH");
-    outputBox = &addChoice ("output.mode", "Ausgabe");
 
     // Kopfzeile: Bezeichnungsmodus ohne Beschriftung (Decision 83).
     namesBox = &addChoice ("names.mode", "");
