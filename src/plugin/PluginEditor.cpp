@@ -94,6 +94,27 @@ Editor::Editor (Processor& processorToEdit)
         wavButton.setTooltip ("Einen Zyklus als WAV rendern (Test-Synth)");
         wavButton.onClick = [this] { exportWav(); };
 
+        addAndMakeVisible (notesButton);
+        notesButton.setTooltip ("Notenfolge als MIDI + Text/CSV exportieren");
+        notesButton.onClick = [this] { exportNotes(); };
+
+        addAndMakeVisible (instrumentBox);
+        instrumentBox->setJustificationType (juce::Justification::centredLeft);
+        instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
+        instrumentBox->addItem ("Interner Synth", 1);
+        instrumentBox->setSelectedItemIndex (0, juce::dontSendNotification);
+        instrumentBox->onChange = [this] { /* Auswahl aendern, wenn noetig */ };
+
+        addAndMakeVisible (loadButton);
+        loadButton.setTooltip ("VST3-Plugin als Instrument laden (Standalone)");
+        loadButton.onClick = [this] { loadInstrument(); };
+
+        addAndMakeVisible (editButton);
+        editButton.setTooltip ("Plugin-Editor-Fenster oeffnen");
+        editButton.onClick = [this] { showInstrumentEditor(); };
+        editButton.setEnabled (false);
+
+        startTimerHz (30);
         setWantsKeyboardFocus (true);
     }
 
@@ -197,6 +218,7 @@ void Editor::buildControls()
     slackKnob = &addKnob ("slack", "Slack");
     harmVelocityKnob = &addKnob ("harm.velocity", "Vel H1-H3");
     harmSpreadKnob = &addKnob ("harm.spread", "Spread");
+    tempoKnob = &addKnob ("tempo", "Tempo");
     latchButton = &addToggle ("latch", "LATCH");
     outputBox = &addChoice ("output.mode", "Ausgabe");
 
@@ -328,6 +350,20 @@ void Editor::focusLost (FocusChangeType)
     pressedKeys.clear();
 }
 
+void Editor::timerCallback()
+{
+    if (! standalone)
+        return;
+
+    const int current = processor.currentStepIndex();
+
+    if (current != m_highlightedStep)
+    {
+        m_highlightedStep = current;
+        repaint();
+    }
+}
+
 void Editor::updateTransportButton()
 {
     if (! standalone)
@@ -371,6 +407,97 @@ void Editor::applyPreset (const Preset& preset)
 
     // Preset-Wechsel beendet klingende Noten sofort (Spezifikation 8.2/8.3).
     processor.notifyPresetChanged();
+}
+
+void Editor::exportNotes()
+{
+    const auto options = processor.exportOptions();
+
+    // Dateiname mit Zeitstempel (ASCII-kompatibel)
+    juce::String timestamp = juce::Time::getCurrentTime().formatted ("%Y%m%d_%H%M%S");
+    juce::String baseName = "Heptachord_Noten_" + timestamp;
+
+    juce::File desktop = juce::File::getSpecialLocation (juce::File::userDesktopDirectory);
+    juce::File midiFile = desktop.getChildFile (baseName + ".mid");
+    juce::File txtFile = desktop.getChildFile (baseName + ".txt");
+
+    // 1. MIDI-Datei (Format 1, PPQ 480, 4 Spuren, Tempo-Meta)
+    if (! MidiExport::saveToFile (midiFile, options))
+    {
+        juce::NativeMessageBox::showMessageBoxAsync (
+            juce::MessageBoxIconType::WarningIcon, "Heptachord",
+            "Die MIDI-Datei konnte nicht gespeichert werden.", this);
+        return;
+    }
+
+    // 2. Text/CSV mit den notierten Steps (aus demselben deterministischen Render)
+    const auto notes = midirender::renderCycle (options);
+
+    juce::String csv;
+    csv += "# Heptachord — Noten-Export\n";
+    csv += "# BPM: " + juce::String (options.bpm, 1) + ", Rate: "
+         + juce::String (options.settings.rate, 3) + ", Seed: 1\n";
+    csv += "Step,Tick,Channel,Pitch,Velocity,Event\n";
+
+    for (const auto& note : notes)
+    {
+        csv += juce::String (note.tick) + ","
+             + juce::String (note.channel) + ","
+             + juce::String (note.pitch) + ","
+             + juce::String (note.velocity) + ","
+             + juce::String (note.noteOn ? "On" : "Off") + "\n";
+    }
+
+    if (! txtFile.replaceWithText (csv))
+    {
+        juce::NativeMessageBox::showMessageBoxAsync (
+            juce::MessageBoxIconType::WarningIcon, "Heptachord",
+            "Die Text-Datei konnte nicht gespeichert werden.", this);
+        return;
+    }
+
+    lastExportedFile = midiFile;
+}
+
+void Editor::loadInstrument()
+{
+    instrumentFileChooser = std::make_unique<juce::FileChooser> (
+        "VST3-Plugin als Instrument laden",
+        juce::File::getSpecialLocation (juce::File::userDesktopDirectory),
+        "*.vst3");
+
+    instrumentFileChooser->launchAsync (
+        juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& chooser)
+        {
+            auto file = chooser.getResult();
+            if (file == juce::File {})
+                return;
+
+            auto inst = createVstPluginInstrument();
+            auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
+            if (! vstInst->load (file))
+            {
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Das VST3-Plugin konnte nicht geladen werden.", this);
+                return;
+            }
+
+            processor.setInstrument (std::move (inst));
+
+            instrumentBox->addItem (processor.instrument()->getName(),
+                                    instrumentBox->getNumItems() + 1);
+            instrumentBox->setSelectedItemIndex (instrumentBox->getNumItems() - 1,
+                                                 juce::dontSendNotification);
+            editButton.setEnabled (processor.instrument()->hasEditor());
+        });
+}
+
+void Editor::showInstrumentEditor()
+{
+    if (processor.instrument() != nullptr)
+        processor.instrument()->showEditor (this);
 }
 
 void Editor::exportWav()
@@ -563,6 +690,13 @@ void Editor::paint (juce::Graphics& g)
     panel (voicesArea, "STIMMEN");
     panel (stepsArea, "STEPS");
 
+    // Step-Highlight: Rahmen um den aktuell abgespielten Step (Standalone).
+    if (standalone && m_highlightedStep >= 0 && m_highlightedStep < 8)
+    {
+        g.setColour (HeptachordLookAndFeel::accent());
+        g.drawRect (m_stepColumnAreas[static_cast<std::size_t> (m_highlightedStep)].toFloat(), 2.0f);
+    }
+
     g.setFont (juce::FontOptions (10.0f));
 
     for (const auto& caption : staticCaptions)
@@ -600,10 +734,11 @@ void Editor::resized()
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (202);
+                              .removeFromRight (262);
         exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 2));
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 2));
         wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
+        notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
     }
 
     for (const auto& entry : controlCaptions)
@@ -629,6 +764,13 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     // Bezeichnungsmodus links neben dem Preset-Selektor (Decision 83).
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
+
+    if (standalone)
+    {
+        instrumentBox->setBounds (buttons.removeFromRight (140).reduced (2, 6));
+        loadButton.setBounds (buttons.removeFromRight (70).reduced (2, 6));
+        editButton.setBounds (buttons.removeFromRight (60).reduced (2, 6));
+    }
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)
@@ -636,7 +778,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     auto inner = area.reduced (kPanelPadding);
     inner.removeFromTop (kZoneTitleHeight);
 
-    constexpr int count = 10;
+    constexpr int count = 11;
     const int cellWidth = inner.getWidth() / count;
 
     const auto cellAt = [&inner, cellWidth] (int index)
@@ -671,6 +813,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     placeKnob (harmSpreadKnob, cellAt (7));
     placeToggle (latchButton, cellAt (8));
     placeChoice (outputBox, cellAt (9));
+    placeKnob (tempoKnob, cellAt (10));
 }
 
 void Editor::layoutVoices (juce::Rectangle<int> area)
@@ -753,6 +896,8 @@ void Editor::layoutSteps (juce::Rectangle<int> area)
     {
         auto column = inner.withX (inner.getX() + index * columnWidth).withWidth (columnWidth)
                            .reduced (4, 0);
+
+        m_stepColumnAreas[static_cast<std::size_t> (index)] = column;
 
         auto& controls = steps[static_cast<std::size_t> (index)];
 

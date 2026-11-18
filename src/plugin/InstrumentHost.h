@@ -1,0 +1,80 @@
+#pragma once
+
+#include "plugin/TestSynth.h"
+
+#include <juce_audio_processors/juce_audio_processors.h>
+
+#include <memory>
+
+namespace heptachord
+{
+
+// Schnittstelle fuer einen Klang-Erzeuger, der MIDI-Events empfängt und Audio
+// produziert. Der TestSynth und ein geladenes VST-Plugin sind Adapter.
+class Instrument
+{
+public:
+    virtual ~Instrument() = default;
+
+    virtual void prepare (double sampleRate) = 0;
+    virtual void process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer) = 0;
+    virtual void reset() = 0;
+
+    // Gibt true zurueck, wenn das Instrument ein eigenes Editor-Fenster hat.
+    virtual bool hasEditor() const = 0;
+    // Oeffnet das Editor-Fenster (nur wenn hasEditor() true).
+    virtual void showEditor (juce::Component* parent) = 0;
+
+    // Anzeigename fuer die UI.
+    virtual juce::String getName() const = 0;
+};
+
+// Adapter um den eingebauten TestSynth.
+class TestSynthInstrument final : public Instrument
+{
+public:
+    TestSynthInstrument();
+    ~TestSynthInstrument() override = default;
+
+    void prepare (double sampleRate) override;
+    void process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer) override;
+    void reset() override;
+
+    bool hasEditor() const override { return false; }
+    void showEditor (juce::Component* parent) override;
+    juce::String getName() const override { return "Interner Synth"; }
+
+private:
+    TestSynth m_synth {};
+};
+
+// Adapter um ein geladenes VST3-Plugin (nur Standalone).
+class VstPluginInstrument final : public Instrument
+{
+public:
+    VstPluginInstrument();
+    ~VstPluginInstrument() override;
+
+    void prepare (double sampleRate) override;
+    void process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer) override;
+    void reset() override;
+
+    bool load (const juce::File& file);
+    void unload();
+
+    bool hasEditor() const override;
+    void showEditor (juce::Component* parent) override;
+    juce::String getName() const override;
+
+private:
+    std::unique_ptr<juce::AudioPluginFormatManager> m_formatManager;
+    std::unique_ptr<juce::AudioPluginInstance> m_plugin;
+    std::unique_ptr<juce::AudioProcessorEditor> m_editor;
+    juce::String m_pluginName;
+    double m_sampleRate = 44100.0;
+};
+
+std::unique_ptr<Instrument> createTestSynthInstrument();
+std::unique_ptr<Instrument> createVstPluginInstrument();
+
+} // namespace heptachord

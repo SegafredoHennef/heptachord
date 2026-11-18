@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(Heptachord VERSION 0.1.4 LANGUAGES C CXX)
+project(Heptachord VERSION 0.1.5 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -67,12 +67,14 @@ target_sources(heptachord PRIVATE
     src/plugin/ComputerKeyboard.cpp
     src/plugin/MidiExport.cpp
     src/plugin/AudioExport.cpp
+    src/plugin/InstrumentHost.cpp
 )
 
 target_link_libraries(heptachord
     PRIVATE
         heptachord_core
         juce::juce_audio_utils
+        juce::juce_audio_plugin_client
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags
@@ -120,12 +122,14 @@ add_executable(heptachord_tests
     src/plugin/ComputerKeyboard.cpp
     src/plugin/MidiExport.cpp
     src/plugin/AudioExport.cpp
+    src/plugin/InstrumentHost.cpp
 )
 target_link_libraries(heptachord_tests PRIVATE
     heptachord_core
     Catch2::Catch2WithMain
     juce::juce_audio_basics
     juce::juce_audio_formats
+    juce::juce_audio_plugin_client
 )
 target_compile_definitions(heptachord_tests PRIVATE
     HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"

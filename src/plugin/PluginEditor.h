@@ -21,6 +21,7 @@ class Processor;
 // acht Step-Spalten. Alle Parameter sind gleichzeitig sichtbar.
 // Der Listener-Erbe verfolgt names.mode (Decision 83: Bezeichnungsmodus).
 class Editor final : public juce::AudioProcessorEditor,
+                     private juce::Timer,
                      private juce::AudioProcessorValueTreeState::Listener,
                      public juce::DragAndDropContainer
 {
@@ -33,6 +34,7 @@ public:
     bool keyPressed (const juce::KeyPress& key) override;
     bool keyStateChanged (bool isKeyDown) override;
     void focusLost (FocusChangeType) override;
+    void timerCallback() override;
 
 private:
     struct CaptionEntry
@@ -114,6 +116,7 @@ private:
     juce::Slider* slackKnob = nullptr;
     juce::Slider* harmVelocityKnob = nullptr;
     juce::Slider* harmSpreadKnob = nullptr;
+    juce::Slider* tempoKnob = nullptr;
     juce::ToggleButton* latchButton = nullptr;
     juce::ComboBox* outputBox = nullptr;
 
@@ -141,6 +144,10 @@ private:
     juce::Rectangle<int> stepsArea;
 
     bool standalone = false;
+
+    // Step-Highlight: aktueller Step (0..7, -1 = keiner) und die Spaltenbereiche.
+    int m_highlightedStep = -1;
+    std::array<juce::Rectangle<int>, 8> m_stepColumnAreas {};
 
     // Tastatur des Standalones (QWERTZ-freundlich, siehe ComputerKeyboard.h).
     int keyboardOctave = 0;
@@ -178,9 +185,17 @@ private:
     void exportMidi();
     void dragMidi();
     void exportWav();
+    void exportNotes();
+    void loadInstrument();
+    void showInstrumentEditor();
     juce::TextButton exportButton { "EXPORT" };
     MidiDragButton dragButton { "DRAG" };
     juce::TextButton wavButton { "WAV" };
+    juce::TextButton notesButton { "NOTEN" };
+    juce::ComboBox* instrumentBox = nullptr;
+    juce::TextButton loadButton { "LADEN..." };
+    juce::TextButton editButton { "EDITOR" };
+    std::unique_ptr<juce::FileChooser> instrumentFileChooser;
     juce::File lastExportedFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
 

@@ -376,3 +376,30 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Heptachord_<Grundton>_<Skala>_<Rate>.wav (ASCII). Tests in
     tests/test_audioexport.cpp (gueltiges WAV, Peak > 0, leerer Zyklus,
     Dateiname).
+
+## Runde 17 (v0.1.5 - Standalone-Erweiterungen)
+
+88. **Step-Highlight** - Der aktuell abgespielte Step (0..7) wird im
+    Standalone durch einen farbigen Rahmen um die entsprechende Step-Spalte
+    kenntlich gemacht. Ein Timer mit 30 Hz fragt processor.currentStepIndex()
+    ab und löst bei Änderung ein epaint() aus. Der Rahmen nutzt
+    HeptachordLookAndFeel::accent() mit 2.0f Linienstärke.
+89. **Noten-Export (MIDI + Text)** - Neuer "NOTEN"-Knopf in der Steps-
+    Titelzeile (standalone-only, neben EXPORT/DRAG/WAV). Exportiert den
+    deterministischen Zyklus als Standard-MIDI (Format 1, PPQ 480, 4 Spuren,
+    Tempo-Meta) sowie als Text/CSV mit Spalten Step, Tick, Kanal, Pitch,
+    Velocity, Event (On/Off). Dateiname Heptachord_Noten_<Zeitstempel>.mid
+    bzw. .txt auf dem Desktop.
+90. **Tempo-Parameter** - Neuer globaler Parameter 	empo (float, 30.0..300.0,
+    Default 120.0, Einheit "BPM") ersetzt den fest verdrahteten
+    kStandaloneBpm = 120.0. Wird in uildTimeline() und exportOptions()
+    verwendet, wenn kein MIDI-Clock aktiv ist. Parameter-Tabelle von 117 auf
+    118 Parameter erweitert via 	ools/gen_params.py.
+91. **VST-Instrument-Hosting (Standalone)** - Neuer Instrument-Interface mit
+    zwei Adaptern: TestSynthInstrument (eingebauter Synth, Default) und
+    VstPluginInstrument (lädt eine VST3-Datei per AudioPluginFormatManager).
+    Der Processor hält ein std::unique_ptr<Instrument> und ruft dessen
+    process() im processBlock auf statt direkt m_synth. UI mit
+    instrumentBox (ComboBox), loadButton ("LADEN...") und
+    editButton ("EDITOR") im Header-Bereich. Nur im Standalone, nicht im
+    VST3-Build. CMake verlinkt juce::juce_audio_plugin_client.

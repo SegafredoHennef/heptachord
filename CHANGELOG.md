@@ -2,6 +2,29 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.5
+
+- Step-Highlight: aktuell abgespielter Step im Standalone durch farbigen
+  Rahmen um die Step-Spalte kenntlich gemacht (Timer 30 Hz,
+  src/plugin/PluginEditor.cpp/.h, src/plugin/PluginProcessor.cpp/.h).
+- Noten-Export (MIDI + Text/CSV): neuer "NOTEN"-Knopf in der Steps-
+  Titelzeile (standalone-only), exportiert den deterministischen Zyklus
+  als Standard-MIDI (Format 1, PPQ 480) sowie als Text/CSV mit
+  Step, Tick, Kanal, Pitch, Velocity, Event (src/plugin/PluginEditor.cpp/.h).
+- Tempo einstellbar: neuer globaler Parameter `tempo` (30–300 BPM, Default 120),
+  ersetzt den fest verdrahteten 120-BPM-Fallback im Standalone und im Export.
+  Parameter-Tabelle auf 118 Parameter erweitert (tools/gen_params.py).
+- VST-Instrument-Hosting (Standalone): statt des eingebauten TestSynths kann
+  ein VST3-Plugin als Instrument geladen werden (LADEN...-Knopf), das die
+  Tonfolge des Sequencers abspielt. Neuer "Instrument"-Interface mit
+  TestSynth- und VST-Adapter (src/plugin/InstrumentHost.h/.cpp). Nur im
+  Standalone, nicht im VST3-Build.
+- Prüfung: 146 Testfälle / 15618 Assertions, `ctest --preset ninja` 100 %,
+  pluginval `--strictness-level 5` SUCCESS.
+
+ZIP `Heptachord-0.1.5-win.zip` (5,2 MB), SHA-256:
+`B3427CE669B0CE81BC2374B3A8AB64581302F1C5EEE5AD45C69B73F2BBB7820F`
+
 ## v0.1.4
 
 - WAV-Export im Standalone: einen Zyklus durch den Test-Synth rendern und

@@ -3,6 +3,7 @@
 #include "plugin/ParameterBinding.h"
 #include "plugin/ProcessorBridge.h"
 #include "plugin/TestSynth.h"
+#include "plugin/InstrumentHost.h"
 
 #include "core/MidiClock.h"
 #include "core/MidiRender.h"
@@ -66,6 +67,9 @@ public:
     bool clockActive() const noexcept;
     double clockBpm() const noexcept;
 
+    // Aktuell abgespielter Step (0 .. 7), -1 wenn keiner (Standalone-Highlight).
+    int currentStepIndex() const noexcept { return m_currentStepIndex.load (std::memory_order_relaxed); }
+
     // Reset-Taster des Editors: loest die Flanke ohne Parameter-Rückschreiben
     // aus (Entscheidung 67).
     void triggerReset() noexcept { m_bridge.requestReset(); }
@@ -79,6 +83,12 @@ public:
     // Preset-Wechsel aus dem Editor: klingende Noten sofort beenden
     // (Spezifikation 8.2/8.3).
     void notifyPresetChanged() { m_bridge.requestAllNotesOff(); }
+
+    // Instrument auswaechlen (nur Standalone). Uebergibt die ownership.
+    void setInstrument (std::unique_ptr<Instrument> instrument) noexcept { m_instrument = std::move (instrument); }
+
+    // Aktuelles Instrument (nullptr wenn noch keines geladen).
+    Instrument* instrument() const noexcept { return m_instrument.get(); }
 
     // Export-Kontext (M1/M2, Decision 84): aktuelle Parameter, BPM und
     // letzte Eingangsnote (0 = noch keine gespielt -> C4-Fallback).
@@ -94,10 +104,11 @@ private:
 
     ParameterBinding m_binding {};
     ProcessorBridge m_bridge {};
-    TestSynth m_synth {};
+    std::unique_ptr<Instrument> m_instrument {};
 
     std::atomic<bool> m_standalonePlaying { true };
     std::atomic<int> m_lastInputNote { 0 };    // 0 = noch keine Note gespielt
+    std::atomic<int> m_currentStepIndex { -1 }; // aktuell abgespielter Step (0..7), -1 = keiner
     double m_standalonePpq = 0.0;
 
     juce::MidiBuffer m_keyboardMidi;

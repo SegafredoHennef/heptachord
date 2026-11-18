@@ -16,6 +16,7 @@ Processor::Processor()
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
     m_binding.connect (apvts);
+    m_instrument = createTestSynthInstrument();
 }
 
 Processor::~Processor()
@@ -28,7 +29,7 @@ Processor::~Processor()
 void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
 {
     m_bridge.prepare (sampleRate, maximumExpectedSamplesPerBlock);
-    m_synth.prepare (sampleRate);
+    m_instrument->prepare (sampleRate);
     m_standalonePpq = 0.0;
 
     // MIDI-Clock: automatisch der erste verfuegbare Eingang (Entscheidung 78).
@@ -51,7 +52,7 @@ void Processor::releaseResources()
 {
     closeClockInput();
     m_bridge.requestAllNotesOff();
-    m_synth.reset();
+    m_instrument->reset();
 }
 
 bool Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -67,7 +68,7 @@ HostTimeline Processor::buildTimeline (int numSamples) noexcept
     const double sampleRate = getSampleRate();
     timeline.sampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
     timeline.numSamples = numSamples;
-    timeline.bpm = kStandaloneBpm;
+    timeline.bpm = m_binding.get (params::id_tempo);
     timeline.isPlaying = true;
 
     if (isStandalone())
@@ -165,8 +166,12 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
     // midiMessages ist Ein- und Ausgabe zugleich; der Bridge kopiert zuerst.
     m_bridge.process (values, timeline, midiMessages, midiMessages);
 
-    if (isStandalone())
-        m_synth.process (midiMessages, buffer);
+    // Aktuellen Step-Index fuer das GUI-Highlight merken (Standalone).
+    m_currentStepIndex.store (static_cast<int> (m_bridge.engine().nextSlotIndex()),
+                              std::memory_order_relaxed);
+
+    if (isStandalone() && m_instrument != nullptr)
+        m_instrument->process (midiMessages, buffer);
 }
 
 void Processor::injectKeyboardNoteOn (int noteNumber, int velocity)
@@ -226,7 +231,7 @@ midirender::RenderOptions Processor::exportOptions() const noexcept
 {
     midirender::RenderOptions options;
     options.settings = settingsFromValues (m_binding.current());
-    options.bpm = clockActive() ? clockBpm() : kStandaloneBpm;
+    options.bpm = clockActive() ? clockBpm() : m_binding.get (params::id_tempo);
     options.inputNote = m_lastInputNote.load (std::memory_order_relaxed);
     options.inputVelocity = midirender::kFallbackVelocity;
     options.seed = 1;  // fester Seed (Decision 84)
