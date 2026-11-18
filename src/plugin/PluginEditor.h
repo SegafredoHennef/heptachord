@@ -198,6 +198,8 @@ private:
     juce::TextButton playButton { "PLAY" };
     juce::TextButton stopButton { "STOP" };
     juce::TextButton clearButton { "CLEAR" };
+    juce::TextButton cycleButton { "1x" };
+    juce::ComboBox* loopCyclesBox = nullptr;
     juce::ComboBox* instrumentBox = nullptr;
     juce::TextButton loadButton { "LADEN..." };
     juce::TextButton editButton { "EDITOR" };

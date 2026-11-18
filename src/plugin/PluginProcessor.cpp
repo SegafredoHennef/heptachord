@@ -184,6 +184,12 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
         // Aufnahme: Output-Events einfangen.
         if (state == 1)
         {
+            const int currentStep = m_currentStepIndex.load (std::memory_order_relaxed);
+
+            // Start-Step beim ersten Block merken.
+            if (m_recordingStartStep < 0 && currentStep >= 0)
+                m_recordingStartStep = currentStep;
+
             const std::lock_guard<std::mutex> lock (m_recordingMutex);
             for (const auto metadata : midiMessages)
             {
@@ -199,13 +205,32 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
             // Start-Tick beim ersten Event setzen.
             if (m_recordingStartTick == 0 && ! m_recording.empty())
                 m_recordingStartTick = m_recording.front().tick;
+
+            // Zyklus-Erkennung: wenn der Sequencer zum Start-Step zurueckkehrt
+            // (nach mindestens einem Step), Aufnahme stoppen (nur im 1x-Modus).
+            if (m_cycleRecording.load (std::memory_order_relaxed) && m_recordingStartStep >= 0
+                && currentStep >= 0 && currentStep == m_recordingStartStep && m_stepsRecorded > 0)
+            {
+                m_recorderState.store (0, std::memory_order_relaxed);
+                m_recordingLength.store (m_recording.empty() ? 0 : m_recording.back().tick + 1,
+                                         std::memory_order_relaxed);
+            }
+
+            // Steps zaehlen (fuer 1x-Modus).
+            if (currentStep >= 0 && (m_stepsRecorded == 0 || currentStep != m_lastRecordedStep))
+            {
+                m_stepsRecorded++;
+                m_lastRecordedStep = currentStep;
+            }
         }
 
         // Wiedergabe: aufgenommene Events einspielen.
         if (state == 2 && ! m_recording.empty())
         {
             const std::int64_t recLen = m_recordingLength.load (std::memory_order_relaxed);
-            const std::int64_t loopLen = (recLen > 0) ? recLen : (m_recording.back().tick - m_recordingStartTick + 1);
+            const std::int64_t baseLen = (recLen > 0) ? recLen : (m_recording.back().tick - m_recordingStartTick + 1);
+            const int cycles = m_loopCycles.load (std::memory_order_relaxed);
+            const std::int64_t loopLen = baseLen * cycles;
 
             std::vector<RecordedMidiEvent> toPlay;
             {
@@ -315,7 +340,29 @@ void Processor::startRecording() noexcept
         const std::lock_guard<std::mutex> lock (m_recordingMutex);
         // Overdub: wenn bereits eine Aufnahme existiert, nicht loeschen.
         if (m_recording.empty())
+        {
             m_recordingStartTick = 0;  // wird im processBlock gesetzt
+            m_recordingStartStep = -1;
+            m_stepsRecorded = 0;
+        }
+        m_cycleRecording.store (false, std::memory_order_relaxed);
+        m_recorderState.store (1, std::memory_order_relaxed);
+    }
+}
+
+void Processor::startCycleRecording() noexcept
+{
+    if (isStandalone())
+    {
+        const std::lock_guard<std::mutex> lock (m_recordingMutex);
+        // Overdub: wenn bereits eine Aufnahme existiert, nicht loeschen.
+        if (m_recording.empty())
+        {
+            m_recordingStartTick = 0;
+            m_recordingStartStep = -1;
+            m_stepsRecorded = 0;
+        }
+        m_cycleRecording.store (true, std::memory_order_relaxed);
         m_recorderState.store (1, std::memory_order_relaxed);
     }
 }
@@ -355,6 +402,12 @@ void Processor::clearRecording() noexcept
         m_recordingLength.store (0, std::memory_order_relaxed);
         m_recorderState.store (0, std::memory_order_relaxed);
     }
+}
+
+void Processor::setLoopCycles (int cycles) noexcept
+{
+    if (cycles == 1 || cycles == 2 || cycles == 4 || cycles == 8)
+        m_loopCycles.store (cycles, std::memory_order_relaxed);
 }
 
 void Processor::closeClockInput() noexcept

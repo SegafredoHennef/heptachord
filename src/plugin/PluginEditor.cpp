@@ -115,6 +115,20 @@ Editor::Editor (Processor& processorToEdit)
         clearButton.onClick = [this] { processor.clearRecording(); updateRecorderButtons(); };
         addAndMakeVisible (clearButton);
 
+        cycleButton.setTooltip ("Genau einen Zyklus aufnehmen (8 Steps)");
+        cycleButton.onClick = [this] { processor.startCycleRecording(); updateRecorderButtons(); };
+        addAndMakeVisible (cycleButton);
+
+        loopCyclesBox = combos.add (new juce::ComboBox());
+        loopCyclesBox->addItem ("1x", 1);
+        loopCyclesBox->addItem ("2x", 2);
+        loopCyclesBox->addItem ("4x", 4);
+        loopCyclesBox->addItem ("8x", 8);
+        loopCyclesBox->setSelectedItemIndex (0, juce::dontSendNotification);
+        loopCyclesBox->setTooltip ("Loop-Laenge in Zyklen");
+        loopCyclesBox->onChange = [this] { processor.setLoopCycles (loopCyclesBox->getSelectedItemIndex() == 0 ? 1 : loopCyclesBox->getSelectedItemIndex() == 1 ? 2 : loopCyclesBox->getSelectedItemIndex() == 2 ? 4 : 8); updateRecorderButtons(); };
+        addAndMakeVisible (loopCyclesBox);
+
         updateRecorderButtons();
 
         instrumentBox = combos.add (new juce::ComboBox());
@@ -838,15 +852,17 @@ void Editor::resized()
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (520);
+                              .removeFromRight (560);
         exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 1));
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 1));
         wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
         notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
-        recButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
-        playButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
-        stopButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
-        clearButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 0));
+        recButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
+        playButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
+        stopButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
+        clearButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
+        cycleButton.setBounds (titleRight.removeFromLeft (40).reduced (0, 0));
+        loopCyclesBox->setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
     }
 
     for (const auto& entry : controlCaptions)

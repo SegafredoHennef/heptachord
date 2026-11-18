@@ -114,6 +114,13 @@ public:
     void stopPlayback() noexcept;
     void clearRecording() noexcept;
 
+    // Aufnahme eines einzelnen Zyklus (8 aktive Steps), dann automatisch stoppen.
+    void startCycleRecording() noexcept;
+
+    // Loop-Laenge in Zyklen (1, 2, 4, 8).
+    void setLoopCycles (int cycles) noexcept;
+    int getLoopCycles() const noexcept { return m_loopCycles.load (std::memory_order_relaxed); }
+
     bool isRecording() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 1; }
     bool isPlaying() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 2; }
     bool hasRecording() const noexcept { return ! m_recording.empty(); }
@@ -142,6 +149,11 @@ private:
     std::int64_t m_recordingStartTick = 0;
     std::int64_t m_playbackTick = 0;
     std::atomic<std::int64_t> m_recordingLength { 0 };
+    std::atomic<int> m_loopCycles { 1 };       // 1, 2, 4, 8
+    std::atomic<bool> m_cycleRecording { false }; // true = auto-stop nach 1 Zyklus
+    int m_recordingStartStep = -1;             // Step bei Aufnahme-Start (fuer Zyklus-Erkennung)
+    int m_stepsRecorded = 0;                   // Anzahl aufgenommener Steps (fuer 1x-Modus)
+    int m_lastRecordedStep = -1;               // letzter aufgenommener Step
     double m_standalonePpq = 0.0;
 
     juce::MidiBuffer m_keyboardMidi;
