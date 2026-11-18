@@ -171,8 +171,75 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
     m_currentStepIndex.store (m_bridge.engine().currentStepIndex(),
                               std::memory_order_relaxed);
 
-    if (isStandalone() && m_instrument != nullptr)
-        m_instrument->process (midiMessages, buffer);
+    if (isStandalone())
+    {
+        const double sampleRate = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
+        const double bpm = timeline.bpm > 0.0 ? timeline.bpm : 120.0;
+        const std::int64_t blockStartTick = static_cast<std::int64_t> (timeline.ppqPosition * midirender::kPpq);
+        const std::int64_t blockEndTick = blockStartTick + static_cast<std::int64_t> (
+            static_cast<double> (buffer.getNumSamples()) * bpm * midirender::kPpq / (60.0 * sampleRate));
+
+        const int state = m_recorderState.load (std::memory_order_relaxed);
+
+        // Aufnahme: Output-Events einfangen.
+        if (state == 1)
+        {
+            const std::lock_guard<std::mutex> lock (m_recordingMutex);
+            for (const auto metadata : midiMessages)
+            {
+                const auto msg = metadata.getMessage();
+                if (msg.isNoteOn() || msg.isNoteOff())
+                {
+                    const std::int64_t tick = blockStartTick + static_cast<std::int64_t> (
+                        static_cast<double> (metadata.samplePosition) * bpm * midirender::kPpq / (60.0 * sampleRate));
+                    m_recording.push_back ({ tick, msg.getChannel(), msg.getNoteNumber(),
+                                             msg.isNoteOn() ? msg.getVelocity() : 0, msg.isNoteOn() });
+                }
+            }
+            // Start-Tick beim ersten Event setzen.
+            if (m_recordingStartTick == 0 && ! m_recording.empty())
+                m_recordingStartTick = m_recording.front().tick;
+        }
+
+        // Wiedergabe: aufgenommene Events einspielen.
+        if (state == 2 && ! m_recording.empty())
+        {
+            const std::int64_t recLen = m_recordingLength.load (std::memory_order_relaxed);
+            const std::int64_t loopLen = (recLen > 0) ? recLen : (m_recording.back().tick - m_recordingStartTick + 1);
+
+            std::vector<RecordedMidiEvent> toPlay;
+            {
+                const std::lock_guard<std::mutex> lock (m_recordingMutex);
+                for (const auto& ev : m_recording)
+                {
+                    // Relativer Tick innerhalb der Aufnahme.
+                    std::int64_t relTick = ev.tick - m_recordingStartTick;
+                    // Loop.
+                    if (loopLen > 0)
+                        relTick = relTick % loopLen;
+                    std::int64_t absTick = m_playbackTick + relTick;
+                    // Nur Events in diesem Block.
+                    if (absTick >= blockStartTick && absTick < blockEndTick)
+                    {
+                        int samplePos = static_cast<int> (
+                            (static_cast<double> (absTick - blockStartTick) / (blockEndTick - blockStartTick)) *
+                            static_cast<double> (buffer.getNumSamples()));
+                        samplePos = std::clamp (samplePos, 0, buffer.getNumSamples() - 1);
+                        juce::MidiMessage msg = ev.noteOn
+                            ? juce::MidiMessage::noteOn (ev.channel, ev.pitch, (juce::uint8) ev.velocity)
+                            : juce::MidiMessage::noteOff (ev.channel, ev.pitch);
+                        msg.setTimeStamp (samplePos);
+                        midiMessages.addEvent (msg, samplePos);
+                    }
+                }
+            }
+            // Playback-Tick vorruecken.
+            m_playbackTick += (blockEndTick - blockStartTick);
+        }
+
+        if (m_instrument != nullptr)
+            m_instrument->process (midiMessages, buffer);
+    }
 }
 
 void Processor::injectKeyboardNoteOn (int noteNumber, int velocity)
@@ -237,6 +304,57 @@ midirender::RenderOptions Processor::exportOptions() const noexcept
     options.inputVelocity = midirender::kFallbackVelocity;
     options.seed = 1;  // fester Seed (Decision 84)
     return options;
+}
+
+// --- MIDI-Rekorder -----------------------------------------------------------
+
+void Processor::startRecording() noexcept
+{
+    if (isStandalone())
+    {
+        const std::lock_guard<std::mutex> lock (m_recordingMutex);
+        // Overdub: wenn bereits eine Aufnahme existiert, nicht loeschen.
+        if (m_recording.empty())
+            m_recordingStartTick = 0;  // wird im processBlock gesetzt
+        m_recorderState.store (1, std::memory_order_relaxed);
+    }
+}
+
+void Processor::stopRecording() noexcept
+{
+    if (isStandalone())
+    {
+        m_recorderState.store (0, std::memory_order_relaxed);
+        const std::lock_guard<std::mutex> lock (m_recordingMutex);
+        m_recordingLength.store (m_recording.empty() ? 0 : m_recording.back().tick + 1,
+                                 std::memory_order_relaxed);
+    }
+}
+
+void Processor::startPlayback() noexcept
+{
+    if (isStandalone() && hasRecording())
+    {
+        m_playbackTick = 0;
+        m_recorderState.store (2, std::memory_order_relaxed);
+    }
+}
+
+void Processor::stopPlayback() noexcept
+{
+    if (isStandalone())
+        m_recorderState.store (0, std::memory_order_relaxed);
+}
+
+void Processor::clearRecording() noexcept
+{
+    if (isStandalone())
+    {
+        const std::lock_guard<std::mutex> lock (m_recordingMutex);
+        m_recording.clear();
+        m_recordingLength.store (0, std::memory_order_relaxed);
+        m_recorderState.store (0, std::memory_order_relaxed);
+    }
 }
 
 void Processor::closeClockInput() noexcept

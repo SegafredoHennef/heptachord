@@ -99,6 +99,22 @@ Editor::Editor (Processor& processorToEdit)
         notesButton.onClick = [this] { exportNotes(); };
         addAndMakeVisible (notesButton);
 
+        recButton.setTooltip ("Aufnahme starten/stoppen (quantisiert auf Step-Grenze)");
+        recButton.onClick = [this] { if (processor.isRecording()) processor.stopRecording(); else processor.startRecording(); updateRecorderButtons(); };
+        addAndMakeVisible (recButton);
+
+        playButton.setTooltip ("Aufnahme abspielen");
+        playButton.onClick = [this] { if (processor.isPlaying()) processor.stopPlayback(); else processor.startPlayback(); updateRecorderButtons(); };
+        addAndMakeVisible (playButton);
+
+        stopButton.setTooltip ("Aufnahme und Wiedergabe stoppen");
+        stopButton.onClick = [this] { processor.stopRecording(); processor.stopPlayback(); updateRecorderButtons(); };
+        addAndMakeVisible (stopButton);
+
+        clearButton.setTooltip ("Aufnahme loeschen");
+        clearButton.onClick = [this] { processor.clearRecording(); updateRecorderButtons(); };
+        addAndMakeVisible (clearButton);
+
         instrumentBox = combos.add (new juce::ComboBox());
         instrumentBox->setJustificationType (juce::Justification::centredLeft);
         instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
@@ -384,6 +400,9 @@ void Editor::timerCallback()
 
         repaint();
     }
+
+    if (standalone)
+        updateRecorderButtons();
 }
 
 void Editor::updateTransportButton()
@@ -470,6 +489,16 @@ void Editor::showInstrumentEditor()
 {
     if (processor.instrument() != nullptr)
         processor.instrument()->showEditor (this);
+}
+
+void Editor::updateRecorderButtons()
+{
+    recButton.setButtonText (processor.isRecording() ? "REC ●" : "REC");
+    playButton.setButtonText (processor.isPlaying() ? "PLAY ▶" : "PLAY");
+    recButton.setEnabled (true);
+    playButton.setEnabled (processor.hasRecording() || processor.isRecording());
+    stopButton.setEnabled (processor.isRecording() || processor.isPlaying());
+    clearButton.setEnabled (processor.hasRecording());
 }
 
 void Editor::exportNotes()
@@ -791,11 +820,15 @@ void Editor::resized()
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (262);
-        exportButton.setBounds (titleRight.removeFromLeft (80).reduced (0, 1));
-        dragButton.setBounds (titleRight.removeFromLeft (78).reduced (0, 1));
-        wavButton.setBounds (titleRight.removeFromLeft (68).reduced (0, 1));
-        notesButton.setBounds (titleRight.removeFromLeft (68).reduced (0, 1));
+                              .removeFromRight (520);
+        exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 1));
+        dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 1));
+        wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
+        notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
+        recButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
+        playButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
+        stopButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
+        clearButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 1));
     }
 
     for (const auto& entry : controlCaptions)

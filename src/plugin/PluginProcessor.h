@@ -5,6 +5,8 @@
 #include "plugin/TestSynth.h"
 #include "plugin/InstrumentHost.h"
 
+#include <vector>
+
 #include "core/MidiClock.h"
 #include "core/MidiRender.h"
 
@@ -94,6 +96,29 @@ public:
     // letzte Eingangsnote (0 = noch keine gespielt -> C4-Fallback).
     midirender::RenderOptions exportOptions() const noexcept;
 
+    // --- MIDI-Rekorder (Standalone) -----------------------------------------
+    // Ein aufgenommenes MIDI-Ereignis (Tick in PPQ, 480 Ticks = 1 Viertel).
+    struct RecordedMidiEvent
+    {
+        std::int64_t tick = 0;
+        int channel = 1;
+        int pitch = 60;
+        int velocity = 100;
+        bool noteOn = true;
+    };
+
+    // Rekorder-Steuerung (audio-thread-sicher ueber Atomics).
+    void startRecording() noexcept;
+    void stopRecording() noexcept;
+    void startPlayback() noexcept;
+    void stopPlayback() noexcept;
+    void clearRecording() noexcept;
+
+    bool isRecording() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 1; }
+    bool isPlaying() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 2; }
+    bool hasRecording() const noexcept { return ! m_recording.empty(); }
+    std::int64_t recordingLengthTicks() const noexcept { return m_recordingLength.load (std::memory_order_relaxed); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -109,6 +134,14 @@ private:
     std::atomic<bool> m_standalonePlaying { true };
     std::atomic<int> m_lastInputNote { 0 };    // 0 = noch keine Note gespielt
     std::atomic<int> m_currentStepIndex { -1 }; // aktuell abgespielter Step (0..7), -1 = keiner
+
+    // MIDI-Rekorder (Standalone).
+    std::atomic<int> m_recorderState { 0 };   // 0=idle, 1=recording, 2=playing
+    std::vector<RecordedMidiEvent> m_recording;
+    std::mutex m_recordingMutex;
+    std::int64_t m_recordingStartTick = 0;
+    std::int64_t m_playbackTick = 0;
+    std::atomic<std::int64_t> m_recordingLength { 0 };
     double m_standalonePpq = 0.0;
 
     juce::MidiBuffer m_keyboardMidi;

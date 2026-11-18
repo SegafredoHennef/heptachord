@@ -187,12 +187,17 @@ private:
     void dragMidi();
     void exportWav();
     void exportNotes();
+    void updateRecorderButtons();
     void loadInstrument();
     void showInstrumentEditor();
     juce::TextButton exportButton { "EXPORT" };
     MidiDragButton dragButton { "DRAG" };
     juce::TextButton wavButton { "WAV" };
     juce::TextButton notesButton { "NOTEN" };
+    juce::TextButton recButton { "REC" };
+    juce::TextButton playButton { "PLAY" };
+    juce::TextButton stopButton { "STOP" };
+    juce::TextButton clearButton { "CLEAR" };
     juce::ComboBox* instrumentBox = nullptr;
     juce::TextButton loadButton { "LADEN..." };
     juce::TextButton editButton { "EDITOR" };
