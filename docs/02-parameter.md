@@ -13,7 +13,7 @@ IDs sind eingefroren; `tests/parameter_ids.txt` ist das Golden File.
 **Einheiten**: Velocity immer in Prozent (0…200 %, Default 100 %). Intern
 multiplikativ, geklemmt auf 1…127.
 
-**Summe**: 117 Parameter.
+**Summe**: 118 Parameter.
 
 ## Global
 
@@ -29,6 +29,7 @@ multiplikativ, geklemmt auf 1…127.
 | `output.mode` | Ausgabe | choice | 0…1 (Multi / Single) | Multi | Multi = eine Stimme pro Kanal, Single = alle auf thru.channel |
 | `reset` | Reset | trigger | — | — | setzt am nächsten Step-Rand auf Step 1 |
 | `names.mode` | Bezeichnungen | choice | 0…2 (Deutsch / International (b) / International (#)) | Deutsch | Anzeige-Konvention fuer Noten- und Skalennamen; wird beim Laden von Presets nicht ueberschrieben |
+| `tempo` | Tempo | float | 30…300 BPM | 120 BPM | Standalone-Tempo in BPM; wird vom MIDI-Clock-Eingang ueberschrieben, solange aktiv |
 
 ## Thru
 

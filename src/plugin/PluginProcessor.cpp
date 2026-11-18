@@ -68,7 +68,7 @@ HostTimeline Processor::buildTimeline (int numSamples) noexcept
     const double sampleRate = getSampleRate();
     timeline.sampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
     timeline.numSamples = numSamples;
-    timeline.bpm = kStandaloneBpm;
+    timeline.bpm = m_binding.get (params::id_tempo);
     timeline.isPlaying = true;
 
     if (isStandalone())
@@ -95,12 +95,13 @@ HostTimeline Processor::buildTimeline (int numSamples) noexcept
                 m_clockWasActive = false;
             }
 
-            timeline.bpm = kStandaloneBpm;
+            const double fallbackBpm = m_binding.get (params::id_tempo);
+            timeline.bpm = fallbackBpm;
             timeline.isPlaying = m_standalonePlaying.load (std::memory_order_relaxed);
             timeline.ppqPosition = m_standalonePpq;
 
             if (timeline.isPlaying)
-                m_standalonePpq += static_cast<double> (numSamples) * kStandaloneBpm / (60.0 * timeline.sampleRate);
+                m_standalonePpq += static_cast<double> (numSamples) * fallbackBpm / (60.0 * timeline.sampleRate);
             else
                 m_standalonePpq = 0.0;
         }
@@ -231,7 +232,7 @@ midirender::RenderOptions Processor::exportOptions() const noexcept
 {
     midirender::RenderOptions options;
     options.settings = settingsFromValues (m_binding.current());
-    options.bpm = clockActive() ? clockBpm() : kStandaloneBpm;
+    options.bpm = clockActive() ? clockBpm() : m_binding.get (params::id_tempo);
     options.inputNote = m_lastInputNote.load (std::memory_order_relaxed);
     options.inputVelocity = midirender::kFallbackVelocity;
     options.seed = 1;  // fester Seed (Decision 84)

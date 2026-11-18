@@ -1,6 +1,7 @@
 #include "plugin/PluginEditor.h"
 
 #include "core/NoteNames.h"
+#include "core/MidiRender.h"
 #include "core/ParameterTable.h"
 #include "plugin/ComputerKeyboard.h"
 #include "plugin/MidiExport.h"
@@ -93,6 +94,10 @@ Editor::Editor (Processor& processorToEdit)
         addAndMakeVisible (wavButton);
         wavButton.setTooltip ("Einen Zyklus als WAV rendern (Test-Synth)");
         wavButton.onClick = [this] { exportWav(); };
+
+        notesButton.setTooltip ("Notenfolge als MIDI + Text/CSV exportieren");
+        notesButton.onClick = [this] { exportNotes(); };
+        addAndMakeVisible (notesButton);
 
         instrumentBox = combos.add (new juce::ComboBox());
         instrumentBox->setJustificationType (juce::Justification::centredLeft);
@@ -215,6 +220,7 @@ void Editor::buildControls()
     slackKnob = &addKnob ("slack", "Slack");
     harmVelocityKnob = &addKnob ("harm.velocity", "Vel H1-H3");
     harmSpreadKnob = &addKnob ("harm.spread", "Spread");
+    tempoKnob = &addKnob ("tempo", "Tempo");
     latchButton = &addToggle ("latch", "LATCH");
     outputBox = &addChoice ("output.mode", "Ausgabe");
 
@@ -448,6 +454,53 @@ void Editor::showInstrumentEditor()
 {
     if (processor.instrument() != nullptr)
         processor.instrument()->showEditor (this);
+}
+
+void Editor::exportNotes()
+{
+    const auto options = processor.exportOptions();
+
+    juce::String timestamp = juce::Time::getCurrentTime().formatted ("%Y%m%d_%H%M%S");
+    juce::String baseName = "Heptachord_Noten_" + timestamp;
+
+    juce::File desktop = juce::File::getSpecialLocation (juce::File::userDesktopDirectory);
+    juce::File midiFile = desktop.getChildFile (baseName + ".mid");
+    juce::File txtFile = desktop.getChildFile (baseName + ".txt");
+
+    if (! MidiExport::saveToFile (midiFile, options))
+    {
+        juce::NativeMessageBox::showMessageBoxAsync (
+            juce::MessageBoxIconType::WarningIcon, "Heptachord",
+            "Die MIDI-Datei konnte nicht gespeichert werden.", this);
+        return;
+    }
+
+    const auto notes = midirender::renderCycle (options);
+
+    juce::String csv;
+    csv += "# Heptachord - Noten-Export\n";
+    csv += "# BPM: " + juce::String (options.bpm, 1) + ", Rate: "
+         + juce::String (options.settings.rate, 3) + ", Seed: 1\n";
+    csv += "Step,Tick,Channel,Pitch,Velocity,Event\n";
+
+    for (const auto& note : notes)
+    {
+        csv += juce::String (note.tick) + ","
+             + juce::String (note.channel) + ","
+             + juce::String (note.pitch) + ","
+             + juce::String (note.velocity) + ","
+             + juce::String (note.noteOn ? "On" : "Off") + "\n";
+    }
+
+    if (! txtFile.replaceWithText (csv))
+    {
+        juce::NativeMessageBox::showMessageBoxAsync (
+            juce::MessageBoxIconType::WarningIcon, "Heptachord",
+            "Die Text-Datei konnte nicht gespeichert werden.", this);
+        return;
+    }
+
+    lastExportedFile = midiFile;
 }
 
 void Editor::exportWav()
@@ -722,10 +775,11 @@ void Editor::resized()
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (202);
+                              .removeFromRight (262);
         exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 2));
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 2));
         wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
+        notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
     }
 
     for (const auto& entry : controlCaptions)
@@ -765,7 +819,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     auto inner = area.reduced (kPanelPadding);
     inner.removeFromTop (kZoneTitleHeight);
 
-    constexpr int count = 10;
+    constexpr int count = 11;
     const int cellWidth = inner.getWidth() / count;
 
     const auto cellAt = [&inner, cellWidth] (int index)
@@ -800,6 +854,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     placeKnob (harmSpreadKnob, cellAt (7));
     placeToggle (latchButton, cellAt (8));
     placeChoice (outputBox, cellAt (9));
+    placeKnob (tempoKnob, cellAt (10));
 }
 
 void Editor::layoutVoices (juce::Rectangle<int> area)

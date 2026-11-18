@@ -117,6 +117,7 @@ private:
     juce::Slider* slackKnob = nullptr;
     juce::Slider* harmVelocityKnob = nullptr;
     juce::Slider* harmSpreadKnob = nullptr;
+    juce::Slider* tempoKnob = nullptr;
     juce::ToggleButton* latchButton = nullptr;
     juce::ComboBox* outputBox = nullptr;
 
@@ -185,11 +186,13 @@ private:
     void exportMidi();
     void dragMidi();
     void exportWav();
+    void exportNotes();
     void loadInstrument();
     void showInstrumentEditor();
     juce::TextButton exportButton { "EXPORT" };
     MidiDragButton dragButton { "DRAG" };
     juce::TextButton wavButton { "WAV" };
+    juce::TextButton notesButton { "NOTEN" };
     juce::ComboBox* instrumentBox = nullptr;
     juce::TextButton loadButton { "LADEN..." };
     juce::TextButton editButton { "EDITOR" };

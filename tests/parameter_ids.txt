@@ -14,6 +14,7 @@ thru.velocity
 thru.channel
 harm.velocity
 harm.spread
+tempo
 h1.enable
 h1.degree
 h1.octave

@@ -338,3 +338,14 @@ label = "Stimme 4"
 type = "bool"
 default = true
 note = "Stimmenmaske: H3"
+
+[[param]]
+id = "tempo"
+group = "global"
+label = "Tempo"
+type = "float"
+min = 30.0
+max = 300.0
+default = 120.0
+unit = "BPM"
+note = "Standalone-Tempo in BPM; wird vom MIDI-Clock-Eingang ueberschrieben, solange aktiv"
