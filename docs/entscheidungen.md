@@ -403,3 +403,21 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     instrumentBox (ComboBox), loadButton ("LADEN...") und
     editButton ("EDITOR") im Header-Bereich. Nur im Standalone, nicht im
     VST3-Build. CMake verlinkt juce::juce_audio_plugin_client.
+
+## Runde 18 (v0.1.6 - Standalone-Verbesserungen)
+
+92. **Step-Highlight sichtbar** - Gefuellter Hintergrund der aktiven Step-Spalte
+    (panelRaised, 0xff232830) + linker Akzentrand (accent, 3px Breite) +
+    Playhead-Dreieck oben an der Spalte. Ersetzt den zuvor unsichtbaren duennen
+    Rahmen. Timer mit 30 Hz fragt processor.currentStepIndex() ab.
+93. **INSTRUMENT-Panel im Global-Bereich** - instrumentBox, loadButton, editButton
+    aus dem ueberfuellten Header entfernt, stattdessen eigenes INSTRUMENT-Panel
+    als 12. Zelle im Global-Bereich (rechts von Output). Prominenter und
+    uebersichtlicher.
+94. **GUI-Zoom** - Feste Stufen 100/125/150/175/200 % ueber ComboBox im Header.
+    setTransform(AffineTransform::scale(zoom, zoom)) am Ende von resized().
+    Gilt fuer Standalone und VST3.
+95. **Kein Reset bei Tonart/Skala-Aenderung** - Bereits korrekt implementiert:
+    reset-Trigger ist separater Parameter (Flanke 0->1), setSettings() uebernimmt
+    neue Werte ohne Cursor-Reset. applyLayoutChange() beendet nur Noten auf
+    Kanalen, die wegfallen.

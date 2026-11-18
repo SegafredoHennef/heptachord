@@ -145,9 +145,13 @@ private:
 
     bool standalone = false;
 
-    // Step-Highlight: aktueller Step (0..7, -1 = keiner) und die Spaltenbereiche.
+    // Step-Highlight: current step (0..7, -1 = none) and the column areas.
     int m_highlightedStep = -1;
     std::array<juce::Rectangle<int>, 8> m_stepColumnAreas {};
+
+    // GUI zoom (fixed steps 100/125/150/175/200 %, Standalone + VST3).
+    float m_zoomFactor = 1.0f;
+    juce::ComboBox* zoomBox = nullptr;
 
     // Tastatur des Standalones (QWERTZ-freundlich, siehe ComputerKeyboard.h).
     int keyboardOctave = 0;

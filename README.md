@@ -58,7 +58,7 @@ stoppt den internen Transport (120 BPM).
 
 ## Download
 
-Aktuelle Version: **v0.1.5** (`Heptachord-0.1.5-win.zip`, SHA-256 steht im
+Aktuelle Version: **v0.1.6** (`Heptachord-0.1.6-win.zip`, SHA-256 steht im
 `CHANGELOG.md`).
 
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren

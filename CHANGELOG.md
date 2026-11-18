@@ -2,6 +2,26 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.6
+
+- **Step-Highlight sichtbar**: aktuell abgespielter Step wird durch gefuellten
+  Hintergrund der Spalte (panelRaised) + linker Akzentrand + Playhead-Dreieck
+  oben kenntlich gemacht (Timer 30 Hz, src/plugin/PluginEditor.cpp).
+- **INSTRUMENT-Panel**: VST-3-Lade-Element (ComboBox, LADEN..., EDITOR) aus dem
+  Header in ein eigenes INSTRUMENT-Panel im Global-Bereich verschoben (12. Zelle,
+  prominenter und übersichtlicher).
+- **GUI-Zoom**: feste Stufen 100 / 125 / 150 / 175 / 200 % ueber eine ComboBox
+  im Header, AffineTransform auf den gesamten Editor, gilt fuer Standalone
+  und VST3.
+- **Kein Reset bei Tonart/Skala-Änderung**: geaenderte Parameter (root, scale,
+  direction, rate) werden ohne Sequencer-Reset uebernommen; klingende Noten
+  werden sanft am naechsten Step-Rand beendet.
+- Prufung: 146 Testfaelle / 15618 Assertions, `ctest --preset ninja` 100 %,
+  pluginval `--strictness-level 5` SUCCESS.
+
+ZIP `Heptachord-0.1.6-win.zip` (5,2 MB), SHA-256:
+`AC9F0532654EADF8B8BE2CA945A3A9017160F3C3220E4EDE90F9CAAB96761D0C`
+
 ## v0.1.5
 
 - Step-Highlight: aktuell abgespielter Step im Standalone durch farbigen

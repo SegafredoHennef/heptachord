@@ -69,6 +69,24 @@ Editor::Editor (Processor& processorToEdit)
     presetBox->setSelectedItemIndex (-1, juce::dontSendNotification);
     presetBox->onChange = [this] { applySelectedPreset(); };
 
+    // GUI-Zoom ComboBox (feste Stufen, Standalone + VST3).
+    zoomBox = combos.add (new juce::ComboBox());
+    zoomBox->setJustificationType (juce::Justification::centredLeft);
+    zoomBox->addItem ("100 %", 1);
+    zoomBox->addItem ("125 %", 2);
+    zoomBox->addItem ("150 %", 3);
+    zoomBox->addItem ("175 %", 4);
+    zoomBox->addItem ("200 %", 5);
+    zoomBox->setSelectedItemIndex (0, juce::dontSendNotification);
+    zoomBox->setTooltip ("GUI-Zoom (Standalone + VST3)");
+    zoomBox->onChange = [this]
+    {
+        const int idx = zoomBox->getSelectedItemIndex();
+        m_zoomFactor = 1.0f + static_cast<float> (idx) * 0.25f;
+        resized();
+    };
+    addAndMakeVisible (*zoomBox);
+
     addAndMakeVisible (resetButton);
     resetButton.setTooltip ("Setzt das Raster am naechsten Step-Rand auf Step 1");
     resetButton.onClick = [this] { processor.triggerReset(); };
@@ -690,11 +708,26 @@ void Editor::paint (juce::Graphics& g)
     panel (voicesArea, "STIMMEN");
     panel (stepsArea, "STEPS");
 
-    // Step-Highlight: Rahmen um den aktuell abgespielten Step (Standalone).
+    // Step-Highlight: gefuellter Hintergrund der aktiven Spalte + Playhead
+    // (Standalone, deutlich sichtbarer als ein duenner Rahmen).
     if (standalone && m_highlightedStep >= 0 && m_highlightedStep < 8)
     {
+        const auto& col = m_stepColumnAreas[static_cast<std::size_t> (m_highlightedStep)];
+
+        // Gefuellter Hintergrund der Spalte.
+        g.setColour (HeptachordLookAndFeel::panelRaised());
+        g.fillRect (col.toFloat());
+
+        // Kleiner Akzentrand links an der Spalte.
         g.setColour (HeptachordLookAndFeel::accent());
-        g.drawRect (m_stepColumnAreas[static_cast<std::size_t> (m_highlightedStep)].toFloat(), 2.0f);
+        g.fillRect (col.getX(), col.getY(), 3, col.getHeight());
+
+        // Playhead-Dreieck oben an der Spalte.
+        juce::Path playhead;
+        const int cx = col.getX() + col.getWidth() / 2;
+        const int cy = col.getY() - 8;
+        playhead.addTriangle (cx - 5, cy + 5, cx + 5, cy + 5, cx, cy - 5);
+        g.fillPath (playhead);
     }
 
     g.setFont (juce::FontOptions (10.0f));
@@ -750,6 +783,9 @@ void Editor::resized()
         staticCaptions.push_back ({ { anchor.getX(), anchor.getY() - 12, anchor.getWidth(), 11 },
                                     entry.text });
     }
+
+    // GUI-Zoom: gesamten Editor skaliieren (Standalone + VST3).
+    setTransform (juce::AffineTransform::scale (m_zoomFactor, m_zoomFactor));
 }
 
 void Editor::layoutHeader (juce::Rectangle<int> area)
@@ -765,12 +801,7 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
 
-    if (standalone)
-    {
-        instrumentBox->setBounds (buttons.removeFromRight (140).reduced (2, 6));
-        loadButton.setBounds (buttons.removeFromRight (70).reduced (2, 6));
-        editButton.setBounds (buttons.removeFromRight (60).reduced (2, 6));
-    }
+    zoomBox->setBounds (buttons.removeFromRight (110).reduced (2, 6));
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)
@@ -778,7 +809,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     auto inner = area.reduced (kPanelPadding);
     inner.removeFromTop (kZoneTitleHeight);
 
-    constexpr int count = 11;
+    constexpr int count = 12;
     const int cellWidth = inner.getWidth() / count;
 
     const auto cellAt = [&inner, cellWidth] (int index)
@@ -814,6 +845,17 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     placeToggle (latchButton, cellAt (8));
     placeChoice (outputBox, cellAt (9));
     placeKnob (tempoKnob, cellAt (10));
+
+    // INSTRUMENT-Panel: ComboBox oben, LADEN + EDITOR unten (Standalone).
+    if (standalone)
+    {
+        auto instCell = cellAt (11);
+        instrumentBox->setBounds (instCell.getX(), instCell.getY() + 10, instCell.getWidth(), 26);
+
+        const int half = instCell.getWidth() / 2;
+        loadButton.setBounds (instCell.getX(), instCell.getY() + 42, half - 2, 24);
+        editButton.setBounds (instCell.getX() + half + 2, instCell.getY() + 42, half - 4, 24);
+    }
 }
 
 void Editor::layoutVoices (juce::Rectangle<int> area)
