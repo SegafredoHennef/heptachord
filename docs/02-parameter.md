@@ -22,7 +22,7 @@ multiplikativ, geklemmt auf 1…127.
 | `root` | Grundton | choice | 0…11 (C / Cis / D / Dis / E / F / Fis / G / Gis / A / Ais / H) | C | Bezugston der Skala; Anzeige folgt names.mode |
 | `scale` | Skala | choice | 0…7 (Dur / Moll / Harmonisch Moll / Melodisch Moll / Dorisch / Phrygisch / Lydisch / Mixolydisch) | Dur | Reihenfolge wie im Original |
 | `rate` | Rate | choice | 0…16 (1/16 / 1/12 / 1/8 / 1/6 / 1/4 / 1/3 / 3/8 / 1/2 / 2/3 / 3/4 / 1 / 4/3 / 3/2 / 2 / 3 / 4 / 8) | 1/8 | 17 Werte, 1.0 = ein Takt (4/4) |
-| `direction` | Richtung | choice | 0…3 (Vorwärts / Rückwärts / PingPong / Zufall) | Vorwärts | läuft nur über aktive Steps |
+| `direction` | Richtung | choice | 0…5 (Vorwärts / Rückwärts / Pendel I / Pendel II / Brownian / Zufall) | Vorwärts | läuft nur über aktive Steps |
 | `swing` | Swing | float | 0…75 % | 0 % | verzögert die ungeraden Steps |
 | `slack` | Slack | float | -100…100 ms | 0 ms | globaler Versatz, auf weniger als eine Step-Länge geklemmt |
 | `latch` | Latch | bool | an/aus | aus | hält die zuletzt gespielte Note |

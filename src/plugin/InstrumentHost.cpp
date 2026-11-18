@@ -88,15 +88,14 @@ bool VstPluginInstrument::load (const juce::File& file)
     if (format == nullptr)
         return false;
 
-    juce::PluginDescription desc;
-    desc.fileOrIdentifier = file.getFullPathName();
-    desc.name = file.getFileNameWithoutExtension();
-    desc.pluginFormatName = format->getName();
-    desc.isInstrument = true;
-    desc.numInputChannels = 0;
-    desc.numOutputChannels = 2;
+    // Zuerst scannen, um eine korrekte PluginDescription zu erhalten.
+    juce::OwnedArray<juce::PluginDescription> descriptions;
+    format->findAllTypesForFile (descriptions, file.getFullPathName());
 
-    m_plugin = format->createInstanceFromDescription (desc, m_sampleRate, 512);
+    if (descriptions.isEmpty())
+        return false;
+
+    m_plugin = format->createInstanceFromDescription (*descriptions[0], m_sampleRate, 512);
 
     if (m_plugin == nullptr)
         return false;

@@ -776,10 +776,10 @@ void Editor::resized()
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
                               .removeFromRight (262);
-        exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 2));
-        dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 2));
-        wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
-        notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
+        exportButton.setBounds (titleRight.removeFromLeft (80).reduced (0, 1));
+        dragButton.setBounds (titleRight.removeFromLeft (78).reduced (0, 1));
+        wavButton.setBounds (titleRight.removeFromLeft (68).reduced (0, 1));
+        notesButton.setBounds (titleRight.removeFromLeft (68).reduced (0, 1));
     }
 
     for (const auto& entry : controlCaptions)

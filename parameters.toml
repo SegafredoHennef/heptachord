@@ -64,7 +64,7 @@ id = "direction"
 group = "global"
 label = "Richtung"
 type = "choice"
-choices = ["Vorwärts", "Rückwärts", "PingPong", "Zufall"]
+choices = ["Vorwärts", "Rückwärts", "Pendel I", "Pendel II", "Brownian", "Zufall"]
 default = "Vorwärts"
 note = "läuft nur über aktive Steps"
 
