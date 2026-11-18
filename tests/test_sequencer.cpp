@@ -73,7 +73,7 @@ TEST_CASE ("PingPong wiederholt die Endpunkte nicht", "[sequencer][T10]")
 {
     StepSequencer sequencer;
     sequencer.setSteps (makeSteps ({ 0, 1, 2, 3 }));
-    sequencer.setDirection (Direction::PingPong);
+    sequencer.setDirection (Direction::PendelI);
     sequencer.reset();
 
     const auto order = collect (sequencer, 12);
@@ -84,7 +84,7 @@ TEST_CASE ("PingPong laeuft nur ueber aktive Steps", "[sequencer][T10]")
 {
     StepSequencer sequencer;
     sequencer.setSteps (makeSteps ({ 1, 4, 6 }));
-    sequencer.setDirection (Direction::PingPong);
+    sequencer.setDirection (Direction::PendelI);
     sequencer.reset();
 
     const auto order = collect (sequencer, 8);
@@ -95,7 +95,7 @@ TEST_CASE ("PingPong mit zwei Steps wechselt", "[sequencer][T10]")
 {
     StepSequencer sequencer;
     sequencer.setSteps (makeSteps ({ 2, 5 }));
-    sequencer.setDirection (Direction::PingPong);
+    sequencer.setDirection (Direction::PendelI);
     sequencer.reset();
 
     const auto order = collect (sequencer, 4);

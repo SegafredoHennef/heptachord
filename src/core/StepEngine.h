@@ -65,6 +65,7 @@ public:
 
     const NoteTracker& noteTracker() const noexcept { return m_notes; }
     std::int64_t nextSlotIndex() const noexcept { return m_nextSlot; }
+    int currentStepIndex() const noexcept { return m_currentStep; }
     bool isRunning() const noexcept { return m_wasPlaying; }
 
 private:
@@ -137,6 +138,7 @@ private:
     double m_blockSpq = 22050.0;
     std::int64_t m_nextSlot = 0;
     double m_nextSlotOffset = 0.0;   // relativ zum Blockanfang
+    int m_currentStep = -1;          // aktuell abgespielter Step (0..7)
     double m_lastPpq = 0.0;
     double m_lastSpq = 22050.0;
     int m_lastNumSamples = 0;

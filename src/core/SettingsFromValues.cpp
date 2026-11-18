@@ -30,7 +30,7 @@ Scale asScale (float value) noexcept
 
 Direction asDirection (float value) noexcept
 {
-    return static_cast<Direction> (clampInt (value, 0, 3));
+    return static_cast<Direction> (clampInt (value, 0, 5));
 }
 
 StepMode asStepMode (float value) noexcept

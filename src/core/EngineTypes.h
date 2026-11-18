@@ -14,8 +14,10 @@ enum class Direction : int
 {
     Forward = 0,
     Backward,
-    PingPong,
-    Random
+    PendelI,      // klassisches PingPong (Enden nicht wiederholt)
+    PendelII,     // PingPong mit Enden-Wiederholung
+    Brownian,     // Zufallswalk (+-1)
+    Random        // zufaelliger aktiver Step
 };
 
 enum class StepMode : int

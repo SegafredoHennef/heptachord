@@ -281,6 +281,8 @@ void StepEngine::startSlot (int offsetSamples)
     if (! m_sequencer.nextStep (stepIndex))
         return;
 
+    m_currentStep = stepIndex;
+
     const StepPlan plan = m_planner.planSlot (stepIndex, slotIndex);
     if (! plan.valid || plan.hits <= 0)
         return;

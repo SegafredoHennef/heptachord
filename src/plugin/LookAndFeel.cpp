@@ -30,6 +30,8 @@ HeptachordLookAndFeel::HeptachordLookAndFeel()
     setColour (juce::TextButton::textColourOnId, background());
 }
 
+juce::ToggleButton* HeptachordLookAndFeel::currentStepActiveButton_ = nullptr;
+
 void HeptachordLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
                                               float sliderPos, float rotaryStartAngle,
                                               float rotaryEndAngle, juce::Slider&)
@@ -77,7 +79,8 @@ void HeptachordLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleBut
     auto bounds = button.getLocalBounds().toFloat().reduced (1.0f);
     const bool on = button.getToggleState();
 
-    auto fill = on ? accent() : panelRaised();
+    const bool isCurrentStepButton = (&button == HeptachordLookAndFeel::currentStepActiveButton());
+    auto fill = on ? (isCurrentStepButton ? highlightYellow() : accent()) : panelRaised();
 
     if (shouldDrawButtonAsDown)
         fill = fill.brighter (0.15f);
@@ -87,7 +90,7 @@ void HeptachordLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleBut
     g.setColour (fill);
     g.fillRoundedRectangle (bounds, 3.5f);
 
-    g.setColour (on ? accent() : line());
+    g.setColour (on ? (isCurrentStepButton ? highlightYellow() : accent()) : line());
     g.drawRoundedRectangle (bounds, 3.5f, 1.0f);
 
     g.setColour (on ? background() : muted());

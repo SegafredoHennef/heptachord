@@ -30,7 +30,7 @@ inline constexpr int kNumParameters = 117;
 inline constexpr const char* kChoices0[] = { "C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "H" };
 inline constexpr const char* kChoices1[] = { "Dur", "Moll", "Harmonisch Moll", "Melodisch Moll", "Dorisch", "Phrygisch", "Lydisch", "Mixolydisch" };
 inline constexpr const char* kChoices2[] = { "1/16", "1/12", "1/8", "1/6", "1/4", "1/3", "3/8", "1/2", "2/3", "3/4", "1", "4/3", "3/2", "2", "3", "4", "8" };
-inline constexpr const char* kChoices3[] = { "Vorwärts", "Rückwärts", "PingPong", "Zufall" };
+inline constexpr const char* kChoices3[] = { "Vorwärts", "Rückwärts", "Pendel I", "Pendel II", "Brownian", "Zufall" };
 inline constexpr const char* kChoices7[] = { "Multi", "Single" };
 inline constexpr const char* kChoices9[] = { "Deutsch", "International (b)", "International (#)" };
 inline constexpr const char* kChoices38[] = { "Play", "Hold", "Rest", "Ratchet" };
@@ -46,7 +46,7 @@ inline constexpr std::array<Param, static_cast<std::size_t>(kNumParameters)> kPa
     { "root", "Grundton", "global", Type::Choice, 0.0f, 0.0f, 0.0f, nullptr, kChoices0, 12, "Bezugston der Skala; Anzeige folgt names.mode" },
     { "scale", "Skala", "global", Type::Choice, 0.0f, 0.0f, 0.0f, nullptr, kChoices1, 8, "Reihenfolge wie im Original" },
     { "rate", "Rate", "global", Type::Choice, 0.0f, 0.0f, 2.0f, nullptr, kChoices2, 17, "17 Werte, 1.0 = ein Takt (4/4)" },
-    { "direction", "Richtung", "global", Type::Choice, 0.0f, 0.0f, 0.0f, nullptr, kChoices3, 4, "läuft nur über aktive Steps" },
+    { "direction", "Richtung", "global", Type::Choice, 0.0f, 0.0f, 0.0f, nullptr, kChoices3, 6, "läuft nur über aktive Steps" },
     { "swing", "Swing", "global", Type::Float, 0.0f, 75.0f, 0.0f, "%", nullptr, 0, "verzögert die ungeraden Steps" },
     { "slack", "Slack", "global", Type::Float, -100.0f, 100.0f, 0.0f, "ms", nullptr, 0, "globaler Versatz, auf weniger als eine Step-Länge geklemmt" },
     { "latch", "Latch", "global", Type::Bool, 0.0f, 0.0f, 0.0f, nullptr, nullptr, 0, "hält die zuletzt gespielte Note" },

@@ -94,6 +94,24 @@ Editor::Editor (Processor& processorToEdit)
         wavButton.setTooltip ("Einen Zyklus als WAV rendern (Test-Synth)");
         wavButton.onClick = [this] { exportWav(); };
 
+        instrumentBox = combos.add (new juce::ComboBox());
+        instrumentBox->setJustificationType (juce::Justification::centredLeft);
+        instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
+        instrumentBox->addItem ("Interner Synth", 1);
+        instrumentBox->setSelectedItemIndex (0, juce::dontSendNotification);
+        instrumentBox->onChange = [this] { /* Auswahl aendern, wenn noetig */ };
+        addAndMakeVisible (instrumentBox);
+
+        loadButton.setTooltip ("VST3-Plugin als Instrument laden (Standalone)");
+        loadButton.onClick = [this] { loadInstrument(); };
+        addAndMakeVisible (loadButton);
+
+        editButton.setTooltip ("Plugin-Editor-Fenster oeffnen");
+        editButton.onClick = [this] { showInstrumentEditor(); };
+        editButton.setEnabled (false);
+        addAndMakeVisible (editButton);
+
+        startTimerHz (30);
         setWantsKeyboardFocus (true);
     }
 
@@ -328,6 +346,24 @@ void Editor::focusLost (FocusChangeType)
     pressedKeys.clear();
 }
 
+void Editor::timerCallback()
+{
+    if (! standalone)
+        return;
+
+    const int current = processor.currentStepIndex();
+
+    if (current != m_highlightedStep)
+    {
+        m_highlightedStep = current;
+
+        HeptachordLookAndFeel::setCurrentStepActiveButton (
+            (current >= 0 && current < 8) ? steps[static_cast<std::size_t> (current)].active : nullptr);
+
+        repaint();
+    }
+}
+
 void Editor::updateTransportButton()
 {
     if (! standalone)
@@ -371,6 +407,47 @@ void Editor::applyPreset (const Preset& preset)
 
     // Preset-Wechsel beendet klingende Noten sofort (Spezifikation 8.2/8.3).
     processor.notifyPresetChanged();
+}
+
+void Editor::loadInstrument()
+{
+    instrumentFileChooser = std::make_unique<juce::FileChooser> (
+        "VST3-Plugin als Instrument laden",
+        juce::File::getSpecialLocation (juce::File::userDesktopDirectory),
+        "*.vst3");
+
+    instrumentFileChooser->launchAsync (
+        juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& chooser)
+        {
+            auto file = chooser.getResult();
+            if (file == juce::File {})
+                return;
+
+            auto inst = createVstPluginInstrument();
+            auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
+            if (! vstInst->load (file))
+            {
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Das VST3-Plugin konnte nicht geladen werden.", this);
+                return;
+            }
+
+            processor.setInstrument (std::move (inst));
+
+            instrumentBox->addItem (processor.instrument()->getName(),
+                                    instrumentBox->getNumItems() + 1);
+            instrumentBox->setSelectedItemIndex (instrumentBox->getNumItems() - 1,
+                                                 juce::dontSendNotification);
+            editButton.setEnabled (processor.instrument()->hasEditor());
+        });
+}
+
+void Editor::showInstrumentEditor()
+{
+    if (processor.instrument() != nullptr)
+        processor.instrument()->showEditor (this);
 }
 
 void Editor::exportWav()
@@ -513,8 +590,35 @@ void Editor::parameterChanged (const juce::String& parameterID, float /*newValue
     });
 }
 
+void Editor::paintOverChildren (juce::Graphics& g)
+{
+    if (standalone && m_highlightedStep >= 0 && m_highlightedStep < 8)
+    {
+        auto* btn = steps[static_cast<std::size_t> (m_highlightedStep)].active;
+        if (btn != nullptr)
+        {
+            auto b = btn->getBounds().toFloat();
+            g.setColour (HeptachordLookAndFeel::highlightYellow());
+            g.fillRoundedRectangle (b.reduced (1.0f), 3.5f);
+            g.setColour (HeptachordLookAndFeel::highlightYellow());
+            g.drawRoundedRectangle (b.reduced (1.0f), 3.5f, 1.0f);
+            g.setColour (HeptachordLookAndFeel::background());
+            g.setFont (juce::FontOptions (10.5f, juce::Font::bold));
+            g.drawText (btn->getButtonText(), b.reduced (1.0f), juce::Justification::centred);
+        }
+    }
+}
+
 void Editor::paint (juce::Graphics& g)
 {
+    // Step-Highlight (gelb): Active-Toggle des aktuellen Steps registrieren.
+    {
+        juce::ToggleButton* current = nullptr;
+        if (standalone && m_highlightedStep >= 0 && m_highlightedStep < 8)
+            current = steps[static_cast<std::size_t> (m_highlightedStep)].active;
+        HeptachordLookAndFeel::setCurrentStepActiveButton (current);
+    }
+
     g.fillAll (HeptachordLookAndFeel::background());
 
     // Kopfzeile
@@ -562,6 +666,24 @@ void Editor::paint (juce::Graphics& g)
     panel (globalArea, "GLOBAL");
     panel (voicesArea, "STIMMEN");
     panel (stepsArea, "STEPS");
+
+    // Step-Highlight: gefuellter Hintergrund der aktiven Spalte + Playhead (Standalone).
+    if (standalone && m_highlightedStep >= 0 && m_highlightedStep < 8)
+    {
+        const auto& col = m_stepColumnAreas[static_cast<std::size_t> (m_highlightedStep)];
+
+        g.setColour (HeptachordLookAndFeel::panelRaised());
+        g.fillRect (col.toFloat());
+
+        g.setColour (HeptachordLookAndFeel::accent());
+        g.fillRect (col.getX(), col.getY(), 3, col.getHeight());
+
+        juce::Path playhead;
+        const int cx = col.getX() + col.getWidth() / 2;
+        const int cy = col.getY() - 8;
+        playhead.addTriangle (cx - 5, cy + 5, cx + 5, cy + 5, cx, cy - 5);
+        g.fillPath (playhead);
+    }
 
     g.setFont (juce::FontOptions (10.0f));
 
@@ -629,6 +751,13 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     // Bezeichnungsmodus links neben dem Preset-Selektor (Decision 83).
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
+
+    if (standalone)
+    {
+        instrumentBox->setBounds (buttons.removeFromRight (140).reduced (2, 6));
+        loadButton.setBounds (buttons.removeFromRight (70).reduced (2, 6));
+        editButton.setBounds (buttons.removeFromRight (60).reduced (2, 6));
+    }
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)
@@ -753,6 +882,8 @@ void Editor::layoutSteps (juce::Rectangle<int> area)
     {
         auto column = inner.withX (inner.getX() + index * columnWidth).withWidth (columnWidth)
                            .reduced (4, 0);
+
+        m_stepColumnAreas[static_cast<std::size_t> (index)] = column;
 
         auto& controls = steps[static_cast<std::size_t> (index)];
 

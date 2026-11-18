@@ -61,9 +61,12 @@ void StepSequencer::reset() noexcept
         case Direction::Backward:
             m_position = static_cast<int> (m_active.size());
             break;
-        case Direction::PingPong:
+        case Direction::PendelI:
+        case Direction::PendelII:
             m_position = -1;             // der naechste Aufruf liefert 0
+            m_pingPongDirection = 1;
             break;
+        case Direction::Brownian:
         case Direction::Random:
             m_position = -1;
             break;
@@ -83,26 +86,30 @@ bool StepSequencer::nextStep (int& stepIndex) noexcept
     switch (m_direction)
     {
         case Direction::Forward:
-            m_position = ((m_position + 1) % count + count) % count;
+            if (m_position < 0)
+                m_position = 0;
+            else
+                m_position = ((m_position + 1) % count + count) % count;
             break;
 
         case Direction::Backward:
-            m_position = ((m_position - 1) % count + count) % count;
+            if (m_position < 0)
+                m_position = count - 1;
+            else
+                m_position = ((m_position - 1) % count + count) % count;
             break;
 
-        case Direction::PingPong:
+        case Direction::PendelI:
         {
-            if (count <= 2)
+            // Klassisches PingPong: Enden werden nicht wiederholt.
+            if (count <= 1)
             {
-                // Bei zwei Steps wechseln die Richtungen; bei einem bleibt
-                // der Cursor stehen.
-                m_position = (count == 1) ? 0 : (m_position == 0 ? 1 : 0);
+                m_position = 0;
                 break;
             }
 
             if (m_position < 0)
             {
-                // Erster Schritt der Folge.
                 m_position = 0;
                 m_pingPongDirection = 1;
                 break;
@@ -119,6 +126,64 @@ bool StepSequencer::nextStep (int& stepIndex) noexcept
                 m_pingPongDirection = 1;
                 next = 1;
             }
+            m_position = next;
+            break;
+        }
+
+        case Direction::PendelII:
+        {
+            // PingPong mit Enden-Wiederholung: ... n-1, n-1, n-2, ... 0, 0, 1 ...
+            if (count <= 1)
+            {
+                m_position = 0;
+                break;
+            }
+
+            if (m_position < 0)
+            {
+                m_position = 0;
+                m_pingPongDirection = 1;
+                break;
+            }
+
+            int next = m_position + m_pingPongDirection;
+            if (next > count - 1)
+            {
+                m_pingPongDirection = -1;
+                next = m_position;          // am Ende einmal halten
+            }
+            else if (next < 0)
+            {
+                m_pingPongDirection = 1;
+                next = m_position;          // am Anfang einmal halten
+            }
+            m_position = next;
+            break;
+        }
+
+        case Direction::Brownian:
+        {
+            // Zufallswalk: jeder Step bewegt sich um +-1 (geklemmt an den Grenzen).
+            if (count <= 1)
+            {
+                m_position = 0;
+                break;
+            }
+
+            if (m_position < 0)
+            {
+                m_position = 0;
+                break;
+            }
+
+            const double value = m_random ? m_random() : 0.5;
+            const int delta = (value < 0.5) ? -1 : 1;
+            int next = m_position + delta;
+            if (next < 0)
+                next = m_position + 1;
+            if (next > count - 1)
+                next = m_position - 1;
+            next = std::clamp (next, 0, count - 1);
             m_position = next;
             break;
         }

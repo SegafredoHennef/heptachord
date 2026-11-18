@@ -19,6 +19,14 @@ public:
     static juce::Colour text() { return juce::Colour (0xffe8e6e1); }
     static juce::Colour muted() { return juce::Colour (0xff8b93a1); }
     static juce::Colour accent() { return juce::Colour (0xffff8a3d); }
+    static juce::Colour highlightYellow() { return juce::Colour (0xffffff00); }
+
+    // Step-Highlight: Zeiger auf den Active-Toggle-Button des aktuell abgespielten Steps.
+    static juce::ToggleButton* currentStepActiveButton() { return currentStepActiveButton_; }
+    static void setCurrentStepActiveButton (juce::ToggleButton* button) { currentStepActiveButton_ = button; }
+
+private:
+    static juce::ToggleButton* currentStepActiveButton_;
 
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
                            float sliderPos, float rotaryStartAngle, float rotaryEndAngle,
