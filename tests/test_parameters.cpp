@@ -65,7 +65,7 @@ TEST_CASE ("Bereiche sind plausibel", "[params]")
 
 TEST_CASE ("Bezeichnungsmodus ist als Choice mit drei Eintraegen vorhanden", "[params]")
 {
-    REQUIRE (params::kNumParameters == 117);
+    REQUIRE (params::kNumParameters == 118);
     REQUIRE (params::id_names_mode == 9);
 
     const auto& p = params::kParams[static_cast<std::size_t> (params::id_names_mode)];
