@@ -59,6 +59,8 @@ Editor::Editor (Processor& processorToEdit)
 
     buildControls();
 
+    factoryPresets = Preset::factoryPresets();
+
     presetBox = combos.add (new juce::ComboBox());
     presetBox->setJustificationType (juce::Justification::centredLeft);
     presetBox->setTooltip ("Factory-Preset laden");
@@ -114,8 +116,7 @@ Editor::Editor (Processor& processorToEdit)
         notesButton.setTooltip ("Notenfolge als MIDI + Text/CSV exportieren");
         notesButton.onClick = [this] { exportNotes(); };
 
-        instrumentBox = combos.add (new juce::ComboBox());
-        addAndMakeVisible (*instrumentBox);
+        addAndMakeVisible (instrumentBox);
         instrumentBox->setJustificationType (juce::Justification::centredLeft);
         instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
         instrumentBox->addItem ("Interner Synth", 1);
@@ -773,6 +774,9 @@ void Editor::resized()
         notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 2));
     }
 
+    // GUI-Zoom: gesamten Editor skaliieren (Standalone + VST3).
+    setTransform (juce::AffineTransform::scale (m_zoomFactor, m_zoomFactor));
+
     for (const auto& entry : controlCaptions)
     {
         if (entry.anchor == nullptr)
@@ -782,9 +786,6 @@ void Editor::resized()
         staticCaptions.push_back ({ { anchor.getX(), anchor.getY() - 12, anchor.getWidth(), 11 },
                                     entry.text });
     }
-
-    // GUI-Zoom: gesamten Editor skaliieren (Standalone + VST3).
-    //setTransform (juce::AffineTransform::scale (m_zoomFactor, m_zoomFactor));
 }
 
 void Editor::layoutHeader (juce::Rectangle<int> area)
@@ -800,7 +801,8 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
 
-    zoomBox->setBounds (buttons.removeFromRight (110).reduced (2, 6));
+    if (standalone)
+    transportButton.setBounds (buttons.removeFromRight (112).reduced (2, 6));
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)
@@ -855,6 +857,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
         loadButton.setBounds (instCell.getX(), instCell.getY() + 42, half - 2, 24);
         editButton.setBounds (instCell.getX() + half + 2, instCell.getY() + 42, half - 4, 24);
     }
+
 }
 
 void Editor::layoutVoices (juce::Rectangle<int> area)

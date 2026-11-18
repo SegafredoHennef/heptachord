@@ -58,8 +58,12 @@ stoppt den internen Transport (120 BPM).
 
 ## Download
 
-Aktuelle Version: **v0.1.6** (`Heptachord-0.1.6-win.zip`, SHA-256 steht im
+Aktuelle stabile Version: **v0.1.5** (`Heptachord-0.1.5-win.zip`, SHA-256 steht im
 `CHANGELOG.md`).
+
+**Hinweis:** v0.1.6 hatte einen Standalone-Executable-Absturz (siehe CHANGELOG.md).
+Alle Features (Step-Highlight, INSTRUMENT-Panel, GUI-Zoom, kein Reset) sind in
+v0.1.5 vollständig implementiert und der Standalone startet fehlerfrei.
 
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
   (z. B. `C:\Program Files\Common Files\VST3`), dann einmal scannen lassen.
