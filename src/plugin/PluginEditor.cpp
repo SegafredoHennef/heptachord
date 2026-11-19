@@ -756,9 +756,15 @@ void Editor::applyPreset (const Preset& preset)
 
 void Editor::loadInstrument()
 {
+    // Voreingestellter Ordner: der systemweite VST3-Standardpfad. Falls er
+    // nicht existiert, als Rueckfall der Desktop.
+    juce::File vst3Folder ("C:/Program Files/Common Files/VST3");
+    if (! vst3Folder.isDirectory())
+        vst3Folder = juce::File::getSpecialLocation (juce::File::userDesktopDirectory);
+
     instrumentFileChooser = std::make_unique<juce::FileChooser> (
         "VST3-Plugin als Instrument laden",
-        juce::File::getSpecialLocation (juce::File::userDesktopDirectory),
+        vst3Folder,
         "*.vst3");
 
     instrumentFileChooser->launchAsync (
