@@ -65,7 +65,9 @@ public:
     void process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer) override;
     void reset() override;
 
-    bool load (const juce::File& file);
+    // Laedt ein VST3. sampleRate ist die aktuelle Geraete-Rate (0 = Standard
+    // 48 kHz); damit wird das Plugin nicht unnoetig zweimal vorbereitet.
+    bool load (const juce::File& file, double sampleRate = 0.0);
     void unload();
     int formatCount() const { return m_formatManager ? m_formatManager->getNumFormats() : 0; }
     juce::String formatNames() const;
@@ -82,10 +84,22 @@ private:
     std::unique_ptr<juce::AudioProcessorEditor> m_editor;
     std::unique_ptr<juce::DocumentWindow> m_editorWindow;
     juce::String m_pluginName;
-    double m_sampleRate = 44100.0;
+    double m_sampleRate = 48000.0;
+    bool m_prepared = false;
+    juce::AudioBuffer<float> m_processBuffer;  // Scratch fuer Mehrkanal-Plugins
 };
 
 std::unique_ptr<Instrument> createTestSynthInstrument();
 std::unique_ptr<Instrument> createVstPluginInstrument();
+
+// Blocklist fuer VST3s, die im eigenen Code abstuerzen (nicht durch den Host
+// verursacht). Gibt den Begruendungstext fuer die UI zurueck; ein leerer
+// String bedeutet "nicht blockiert". Geprueft wird der Dateiname, damit die
+// DLL gar nicht erst geladen wird.
+juce::String blockedPluginReason (const juce::File& file);
+
+// Pfad des Debug-Logs fuer Auto-Test/Diagnose. Geschrieben wird nur, wenn
+// HEPTACHORD_AUTO_VST bzw. HEPTACHORD_VST_DEBUG gesetzt ist.
+juce::File debugLogFile();
 
 } // namespace heptachord

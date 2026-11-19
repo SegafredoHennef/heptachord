@@ -142,6 +142,7 @@ private:
     ParameterBinding m_binding {};
     ProcessorBridge m_bridge {};
     std::unique_ptr<Instrument> m_instrument {};
+    mutable std::mutex m_instrumentMutex;  // schuetzt Tausch vs. Audio-Thread
 
     std::atomic<bool> m_standalonePlaying { true };
     std::atomic<int> m_lastInputNote { 0 };    // 0 = noch keine Note gespielt

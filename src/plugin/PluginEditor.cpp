@@ -55,9 +55,15 @@ void refreshChoiceItems (juce::ComboBox* box, int count,
 // Debug-Log fuer den Auto-Test (siehe InstrumentHost.cpp).
 void autoLog (const juce::String& line)
 {
-    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
-    out << line << '\n';
+    static const double start = juce::Time::getMillisecondCounterHiRes();
+    const double ms = juce::Time::getMillisecondCounterHiRes() - start;
+    std::ofstream out (debugLogFile().getFullPathName().toStdString(), std::ios::app);
+    out << juce::String (ms, 0).toStdString() << "ms " << line.toStdString() << '\n';
 }
+
+// Nur fuer den Auto-Test: haelt ein geladenes, aber nicht als Instrument
+// gesetztes VST am Leben (Kontroll-Experiment).
+std::unique_ptr<Instrument> g_autoLoadedOnly;
 } // namespace
 
 Editor::Editor (Processor& processorToEdit)
@@ -213,60 +219,110 @@ Editor::Editor (Processor& processorToEdit)
                         app->quit();
                 };
 
-                if (! loadInstrumentFromFile (juce::File (autoVstPath)))
+                const bool noActivate = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_NOACTIVATE", {}).isNotEmpty();
+
+                if (noActivate)
                 {
-                    autoLog ("AUTO: load failed");
-                    quitApp();
-                    return;
+                    auto inst = createVstPluginInstrument();
+                    auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
+
+                    if (! vstInst->load (juce::File (autoVstPath), processor.getSampleRate()))
+                    {
+                        autoLog ("AUTO: load failed");
+                        quitApp();
+                        return;
+                    }
+
+                    g_autoLoadedOnly = std::move (inst);
+                    autoLog ("AUTO: loaded (nicht aktiv) name=" + g_autoLoadedOnly->getName());
                 }
-                autoLog ("AUTO: loaded name=" + processor.instrument()->getName());
-
-                juce::Timer::callAfterDelay (1000, [this]
+                else
                 {
-                    showInstrumentEditor();
-                    autoLog ("AUTO: editor open1=" + juce::String ((int) processor.instrument()->isEditorOpen()));
-                });
+                    if (! loadInstrumentFromFile (juce::File (autoVstPath)))
+                    {
+                        const juce::File file (autoVstPath);
+                        const auto reason = blockedPluginReason (file);
+                        autoLog (reason.isNotEmpty()
+                                     ? "AUTO: blocked name=" + file.getFileName()
+                                     : juce::String ("AUTO: load failed"));
+                        quitApp();
+                        return;
+                    }
+                    autoLog ("AUTO: loaded name=" + processor.instrument()->getName());
+                }
 
-                juce::Timer::callAfterDelay (1500, [this]
-                {
-                    processor.instrument()->hideEditor();
-                    autoLog ("AUTO: editor hidden=" + juce::String ((int) processor.instrument()->isEditorOpen()));
-                });
+                // Zeit-Ticks: der letzte TICK vor dem Crash datiert ihn.
+                for (int t = 250; t <= 3000; t += 250)
+                    juce::Timer::callAfterDelay (t, [] { autoLog ("TICK"); });
 
-                juce::Timer::callAfterDelay (2000, [this]
-                {
-                    showInstrumentEditor();
-                    autoLog ("AUTO: editor open2=" + juce::String ((int) processor.instrument()->isEditorOpen()));
-                });
+                const bool skipEditor = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_NOEDITOR", {}).isNotEmpty();
+                const bool noSwitch = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_NOSWITCH", {}).isNotEmpty();
+                const bool noNotes = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_NONOTES", {}).isNotEmpty();
 
-                juce::Timer::callAfterDelay (3000, [this]
+                if (! skipEditor)
                 {
-                    onInstrumentSelected (0);
-                    autoLog ("AUTO: switched to internal name=" + processor.instrument()->getName());
-                });
+                    juce::Timer::callAfterDelay (1000, [this]
+                    {
+                        showInstrumentEditor();
+                        autoLog ("AUTO: editor open1=" + juce::String ((int) processor.instrument()->isEditorOpen()));
+                    });
 
-                juce::Timer::callAfterDelay (3500, [this]
+                    juce::Timer::callAfterDelay (1500, [this]
+                    {
+                        processor.instrument()->hideEditor();
+                        autoLog ("AUTO: editor hidden=" + juce::String ((int) processor.instrument()->isEditorOpen()));
+                    });
+
+                    juce::Timer::callAfterDelay (2000, [this]
+                    {
+                        showInstrumentEditor();
+                        autoLog ("AUTO: editor open2=" + juce::String ((int) processor.instrument()->isEditorOpen()));
+                    });
+                }
+
+                if (! noSwitch)
                 {
-                    processor.injectKeyboardNoteOn (60, 100);
-                    autoLog ("AUTO: note on internal");
-                });
+                    juce::Timer::callAfterDelay (3000, [this]
+                    {
+                        onInstrumentSelected (0);
+                        autoLog ("AUTO: switched to internal name=" + processor.instrument()->getName());
+                    });
+                }
+
+                if (! noNotes)
+                {
+                    juce::Timer::callAfterDelay (3500, [this]
+                    {
+                        processor.injectKeyboardNoteOn (60, 100);
+                        autoLog ("AUTO: note on internal");
+                    });
+                }
 
                 juce::Timer::callAfterDelay (6000, [this]
                 {
                     processor.injectKeyboardNoteOff (60);
                 });
 
-                juce::Timer::callAfterDelay (7000, [this]
+                if (! noActivate)
                 {
-                    onInstrumentSelected (1);
-                    autoLog ("AUTO: switched back name=" + processor.instrument()->getName());
-                });
+                    if (! noSwitch)
+                    {
+                        juce::Timer::callAfterDelay (7000, [this]
+                        {
+                            onInstrumentSelected (1);
+                            autoLog ("AUTO: switched back name=" + processor.instrument()->getName());
+                        });
+                    }
 
-                juce::Timer::callAfterDelay (7500, [this]
-                {
-                    processor.injectKeyboardNoteOn (62, 100);
-                    autoLog ("AUTO: note on vst");
-                });
+                    if (! noNotes)
+                    {
+                        juce::Timer::callAfterDelay (7500, [this]
+                        {
+                            processor.injectKeyboardNoteOn (62, 100);
+                            autoLog ("AUTO: note on vst");
+                        });
+                    }
+                }
 
                 juce::Timer::callAfterDelay (10000, [this]
                 {
@@ -276,6 +332,9 @@ Editor::Editor (Processor& processorToEdit)
                 juce::Timer::callAfterDelay (11000, [this, quitApp]
                 {
                     autoLog ("AUTO: done");
+                    if (processor.instrument() != nullptr)
+                        processor.instrument()->hideEditor();
+                    autoLog ("AUTO: editor closed before quit");
                     quitApp();
                 });
             });
@@ -608,9 +667,14 @@ void Editor::loadInstrument()
 
             if (! loadInstrumentFromFile (file))
             {
+                const auto reason = blockedPluginReason (file);
+
                 juce::NativeMessageBox::showMessageBoxAsync (
                     juce::MessageBoxIconType::WarningIcon, "Heptachord",
-                    "Das VST3-Plugin konnte nicht geladen werden.", this);
+                    reason.isNotEmpty()
+                        ? reason
+                        : juce::String ("Das VST3-Plugin konnte nicht geladen werden."),
+                    this);
             }
         });
 }
@@ -620,7 +684,7 @@ bool Editor::loadInstrumentFromFile (const juce::File& file)
     auto inst = createVstPluginInstrument();
     auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
 
-    if (! vstInst->load (file))
+    if (! vstInst->load (file, processor.getSampleRate()))
         return false;
 
     processor.setInstrument (std::move (inst));
@@ -658,16 +722,23 @@ void Editor::onInstrumentSelected (int boxIndex)
     if (fileIndex < 0 || fileIndex >= m_instrumentFiles.size())
         return;
 
-    if (loadInstrumentFromFile (m_instrumentFiles[fileIndex]))
+    const juce::File file = m_instrumentFiles[fileIndex];
+
+    if (loadInstrumentFromFile (file))
         return;
 
     // Laden fehlgeschlagen: zurueck auf den internen Synth.
     instrumentBox->setSelectedItemIndex (0, juce::dontSendNotification);
     processor.setInstrument (createTestSynthInstrument());
     editButton.setEnabled (false);
+
+    const auto reason = blockedPluginReason (file);
     juce::NativeMessageBox::showMessageBoxAsync (
         juce::MessageBoxIconType::WarningIcon, "Heptachord",
-        "Das VST3-Plugin konnte nicht geladen werden.", this);
+        reason.isNotEmpty()
+            ? reason
+            : juce::String ("Das VST3-Plugin konnte nicht geladen werden."),
+        this);
 }
 
 void Editor::showInstrumentEditor()

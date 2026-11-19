@@ -10,18 +10,25 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
 - [ ] main-Branch bereinigen (v0.1.5/v0.1.6-Features die crashen entfernen)
 - [ ] Noten-Export testen (MIDI + Text/CSV)
-- [ ] Debug-Logging (dbg_audio.txt) vor Release entfernen — InstrumentHost.cpp + PluginEditor.cpp (Auto-Test-Log)
 - [ ] VITAL-Editor-Fenster: Groesse/Position merken, ggf. Schliessen-Button-Feedback
-- [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): problemfaellige Plugins klären — Crashes 0xC0000005
-  pluginseitig (Osirus, OsTIrus, Vavra, Xenia, NodalRed2x, Reason Rack, FabFilter Pro-Q 4),
+- [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
   kein Sound trotz Instrument: DX7 V, Analog Lab 3, SongEngine, OB-Xd 3 (evtl. kein Default-Patch
   oder zu lange Ladezeit — Auto-Test-Timing pruefen)
 - [ ] Effekt-VSTs (ValhallaSupermassive, Wider, Inner Pitch, LANDR Mastering/Stems, Fracture)
   bringen als Instrument keinen Sound — erwartet; nur relevant, wenn Effekt-Support gewuenscht
+- [ ] Reason Rack Plugin.vst3: Blocklist entfernen, sobald ein Hersteller-Update den pluginseitigen
+  Absturz (AV in processBlock) nachweislich behebt (ADR 0009)
 
 ## Erledigt
 
+- [x] VST3 Multi-Bus-Scratchpuffer + sicherer Instrumentwechsel (Mutex/prepare vor Veroeffentlichung):
+      Osirus, OsTIrus, Vavra, Xenia, NodalRed2x, FabFilter Pro-Q 4 im Auto-Test stabil
+      (Laden, Editor open/close/reopen, Wechsel, Noten), vgl. ADR 0008
+- [x] Reason Rack Plugin.vst3 als inkompatible Version blockiert (klare Meldung, kein Load/Crash),
+      pluginseitiger Absturz in processBlock, vgl. ADR 0009
+- [x] Debug-Logging (dbg_audio.txt) auf Diagnose/Auto-Test begrenzt (opt-in per
+      HEPTACHORD_VST_DEBUG/HEPTACHORD_AUTO_VST), kein Default-Write im Normalbetrieb
 - [x] VST-Durchprobierung aller 39 VST3 im System (tools/test_all_vsts.ps1) — 15 klingen,
       7 pluginseitige Crashes, 1 HANG, 1 LOAD_FAIL, Rest sauber ohne Sound (Effekte/MIDI-Tools erwartet)
 - [x] Surge XT nachgetestet (Pfad "Surge Synth Team") — klingt (peak 0.337), alles OK

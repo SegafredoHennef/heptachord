@@ -5,9 +5,69 @@
 
 #include <cmath>
 #include <fstream>
+#include <algorithm>
 
 namespace heptachord
 {
+
+namespace
+{
+// Debug-Log nur auf Anforderung (Entwicklung/Diagnose ueber
+// HEPTACHORD_VST_DEBUG=1). Im normalen Betrieb wird keine Datei geschrieben.
+bool vstDebugEnabled()
+{
+    static const bool enabled =
+        juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_VST_DEBUG", {}).isNotEmpty();
+    return enabled;
+}
+
+void vstLog (const juce::String& line)
+{
+    if (! vstDebugEnabled())
+        return;
+
+    static const double start = juce::Time::getMillisecondCounterHiRes();
+    const double ms = juce::Time::getMillisecondCounterHiRes() - start;
+    std::ofstream out (debugLogFile().getFullPathName().toStdString(), std::ios::app);
+    out << juce::String (ms, 1).toStdString() << "ms " << line.toStdString() << '\n';
+}
+
+struct BlockedPluginEntry
+{
+    const char* fileName;
+    const char* reason;
+};
+
+// Plugins, die nachweislich im eigenen Code abstuerzen (nicht durch den Host
+// verursacht). Reason Rack Plugin 14.0.0 (Build 8573) schreibt wenige
+// processBlock-Aufrufe nach dem Start in ungueltige Kanalpuffer (AV bei
+// RVA 0x1701850) und korrumpiert beim Entladen den Heap. Siehe ADR 0009.
+constexpr BlockedPluginEntry kBlockedPlugins[] =
+{
+    { "Reason Rack Plugin.vst3",
+      "Reason Rack Plugin (Reason Studios) ist in dieser Version nicht mit "
+      "Heptachord kompatibel: Das Plugin stuerzt in seinem eigenen Audio-Code "
+      "ab. Bitte ein Update des Herstellers installieren." }
+};
+} // namespace
+
+juce::String blockedPluginReason (const juce::File& file)
+{
+    const auto name = file.getFileName();
+
+    for (const auto& entry : kBlockedPlugins)
+        if (name.equalsIgnoreCase (entry.fileName))
+            return entry.reason;
+
+    return {};
+}
+
+juce::File debugLogFile()
+{
+    return juce::File::getSpecialLocation (juce::File::tempDirectory)
+             .getChildFile ("opencode")
+             .getChildFile ("dbg_audio.txt");
+}
 
 // -----------------------------------------------------------------------------
 // TestSynthInstrument
@@ -23,20 +83,6 @@ void TestSynthInstrument::prepare (double sampleRate)
 void TestSynthInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer)
 {
     m_synth.process (midi, buffer);
-
-    // Debug (Auto-Test): loggen, wenn der interne Synth klingt.
-    float peak = 0.0f;
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
-            peak = std::max (peak, std::abs (buffer.getSample (ch, i)));
-
-    static int logCount = 0;
-    if (peak > 0.001f && logCount < 15)
-    {
-        std::ofstream dbg ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
-        dbg << "TESTSYNTH peak=" << peak << " midiIn=" << midi.getNumEvents() << '\n';
-        ++logCount;
-    }
 }
 
 void TestSynthInstrument::reset()
@@ -62,9 +108,31 @@ VstPluginInstrument::~VstPluginInstrument()
 
 void VstPluginInstrument::prepare (double sampleRate)
 {
+    vstLog ("PREP begin sr=" + juce::String (sampleRate, 0));
     m_sampleRate = sampleRate;
     if (m_plugin != nullptr)
-        m_plugin->prepareToPlay (sampleRate, 512);
+    {
+        // Nicht mehrfach hintereinander mit identischen Werten vorbereiten:
+        // manche Plugins (z.B. Reason Rack) initialisieren ihren Audio-Graph
+        // bei jedem prepareToPlay neu und geraten dabei in einen defekten
+        // Zustand. Nur bei echter Aenderung der Rate neu vorbereiten.
+        if (! m_prepared
+            || std::abs (m_plugin->getSampleRate() - sampleRate) > 1.0)
+        {
+            m_plugin->prepareToPlay (sampleRate, 512);
+            m_prepared = true;
+        }
+
+        // Scratch-Puffer fuer Plugins mit mehr Kanaelen als der Host-Puffer
+        // (Multi-Bus-Instrumente wie Osirus/OsTIrus/Reason Rack). Kein
+        // Allokieren im Audio-Thread: hier einmal passend vorbereiten.
+        const int needed = std::max ({ 2,
+                                       m_plugin->getTotalNumInputChannels(),
+                                       m_plugin->getTotalNumOutputChannels() });
+        m_processBuffer.setSize (needed, 512, false, false, true);
+        vstLog ("PREP scratch ch=" + juce::String (m_processBuffer.getNumChannels()));
+    }
+    vstLog ("PREP end");
 }
 
 void VstPluginInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer)
@@ -75,34 +143,41 @@ void VstPluginInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuff
     // VITAL (und andere VST3s) brauchen die MIDI-Eingabe.
     juce::MidiBuffer midiIn (midi);
 
-    float peakBefore = 0.0f;
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
-            peakBefore = std::max (peakBefore, std::abs (buffer.getSample (ch, i)));
+    // Ein VST3 mit mehreren Ausgangsbussen erwartet fuer JEDEN Bus einen
+    // gueltigen Kanalpuffer. Unser Host-Puffer hat nur Stereo; deshalb in
+    // einen Scratch-Puffer mit der vollen Kanalzahl prozessieren und danach
+    // die ersten beiden Kanaele zurueckkopieren.
+    const int neededChannels = std::max ({ buffer.getNumChannels(),
+                                           m_plugin->getTotalNumInputChannels(),
+                                           m_plugin->getTotalNumOutputChannels() });
 
-    m_plugin->processBlock (buffer, midiIn);
+    juce::AudioBuffer<float>* processBuffer = &buffer;
 
-    float peakAfter = 0.0f;
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
-            peakAfter = std::max (peakAfter, std::abs (buffer.getSample (ch, i)));
-
-    // Debug: erste 3 Bloecke immer, dann nur bei MIDI oder Audio.
-    static int blockCount = 0;
-    static int logCount = 0;
-    ++blockCount;
-    if (logCount < 40 && (logCount < 3 || midi.getNumEvents() > 0 || peakAfter > 0.0001f))
+    if (neededChannels > buffer.getNumChannels())
     {
-        std::ofstream dbg ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
-        dbg << "block=" << blockCount << " midiIn=" << midi.getNumEvents()
-            << " peakBefore=" << peakBefore << " peakAfter=" << peakAfter
-            << " sr=" << m_plugin->getSampleRate()
-            << " bs=" << m_plugin->getBlockSize()
-            << " outCh=" << m_plugin->getTotalNumOutputChannels()
-            << " channels=" << buffer.getNumChannels()
-            << " samples=" << buffer.getNumSamples() << '\n';
-        logCount++;
+        // Sollte durch prepare() bereits passen; nur im Notfall wachsen.
+        if (m_processBuffer.getNumChannels() < neededChannels
+            || m_processBuffer.getNumSamples() < buffer.getNumSamples())
+            m_processBuffer.setSize (neededChannels, buffer.getNumSamples(), false, false, true);
+
+        // Nur die aktuell anliegende Blockgroesse verarbeiten, nicht die
+        // Allokationsgroesse: sonst bekommt das Plugin mehr Samples, als der
+        // Host tatsaechlich liefert.
+        juce::AudioBuffer<float> view (m_processBuffer.getArrayOfWritePointers(),
+                                       neededChannels, buffer.getNumSamples());
+        view.clear();
+
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            view.copyFrom (ch, 0, buffer, ch, 0, buffer.getNumSamples());
+
+        processBuffer = &view;
     }
+
+    m_plugin->processBlock (*processBuffer, midiIn);
+
+    if (processBuffer != &buffer)
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            buffer.copyFrom (ch, 0, *processBuffer, ch, 0, buffer.getNumSamples());
 }
 
 void VstPluginInstrument::reset()
@@ -111,9 +186,18 @@ void VstPluginInstrument::reset()
         m_plugin->reset();
 }
 
-bool VstPluginInstrument::load (const juce::File& file)
+bool VstPluginInstrument::load (const juce::File& file, double sampleRate)
 {
     unload();
+
+    if (const auto reason = blockedPluginReason (file); reason.isNotEmpty())
+    {
+        vstLog ("LOAD blocked " + file.getFileName() + ": " + reason);
+        return false;
+    }
+
+    if (sampleRate > 0.0)
+        m_sampleRate = sampleRate;
 
     juce::AudioPluginFormat* format = nullptr;
     for (int i = 0; i < m_formatManager->getNumFormats(); ++i)
@@ -142,7 +226,9 @@ bool VstPluginInstrument::load (const juce::File& file)
 
     // Ausgabe-Bus aktivieren: VITAL meldet seinen Main-Out nicht als
     // kDefaultActive, JUCE legt den Bus dadurch deaktiviert an (0 Kanaele)
-    // und das Plugin bleibt still. Stereo explizit anfordern.
+    // und das Plugin bleibt still. Stereo explizit anfordern. Weitere Busse
+    // bleiben in ihrem Default-Zustand; der Prozess-Puffer wird in process()
+    // auf die volle Kanalzahl erweitert.
     bool busesLayoutOk = true;
     {
         auto layout = m_plugin->getBusesLayout();
@@ -153,14 +239,34 @@ bool VstPluginInstrument::load (const juce::File& file)
         }
         else
         {
-            if (layout.outputBuses[0].isDisabled() || layout.outputBuses[0].size() == 0)
-                layout.outputBuses.set (0, juce::AudioChannelSet::stereo());
+            bool layoutChanged = false;
 
-            busesLayoutOk = m_plugin->setBusesLayout (layout);
+            if (layout.outputBuses[0].isDisabled() || layout.outputBuses[0].size() == 0)
+            {
+                layout.outputBuses.set (0, juce::AudioChannelSet::stereo());
+                layoutChanged = true;
+            }
+
+            // Nur bei echter Aenderung anwenden: ein unnoetiges setBusesLayout
+            // reinitialisiert den Audio-Graph des Plugins.
+            if (layoutChanged)
+                busesLayoutOk = m_plugin->setBusesLayout (layout);
+
+            // Zustand der Busse protokollieren (welche sind aktiv?).
+            {
+                std::ofstream dbg ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+                for (int i = 0; i < layout.outputBuses.size(); ++i)
+                    dbg << "BUSOUT " << i << " ch=" << layout.outputBuses[i].size()
+                        << " enabled=" << (! layout.outputBuses[i].isDisabled() ? 1 : 0) << '\n';
+                for (int i = 0; i < layout.inputBuses.size(); ++i)
+                    dbg << "BUSIN " << i << " ch=" << layout.inputBuses[i].size()
+                        << " enabled=" << (! layout.inputBuses[i].isDisabled() ? 1 : 0) << '\n';
+            }
         }
     }
 
     m_plugin->prepareToPlay (m_sampleRate, 512);
+    m_prepared = true;
     m_pluginName = m_plugin->getName();
 
     // Debug: Zustand nach der Aktivierung.
@@ -171,6 +277,7 @@ bool VstPluginInstrument::load (const juce::File& file)
             << " sr=" << m_plugin->getSampleRate()
             << " bs=" << m_plugin->getBlockSize()
             << " outCh=" << m_plugin->getTotalNumOutputChannels()
+            << " inCh=" << m_plugin->getTotalNumInputChannels()
             << " outBuses=" << m_plugin->getBusCount (false)
             << " inBuses=" << m_plugin->getBusCount (true)
             << " layoutOk=" << (busesLayoutOk ? 1 : 0) << '\n';
@@ -189,6 +296,7 @@ void VstPluginInstrument::unload()
     }
     m_editor.reset();
     m_plugin.reset();
+    m_prepared = false;
     m_pluginName.clear();
 }
 

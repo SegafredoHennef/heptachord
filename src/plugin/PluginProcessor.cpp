@@ -38,7 +38,16 @@ Processor::~Processor()
 void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
 {
     m_bridge.prepare (sampleRate, maximumExpectedSamplesPerBlock);
-    m_instrument->prepare (sampleRate);
+
+    {
+        // prepare() dimensioniert auch den Scratch-Puffer des VST-Hosts;
+        // nicht gleichzeitig mit processBlock auf dem Audio-Thread laufen
+        // lassen.
+        const std::lock_guard<std::mutex> lock (m_instrumentMutex);
+        if (m_instrument != nullptr)
+            m_instrument->prepare (sampleRate);
+    }
+
     m_standalonePpq = 0.0;
 
     // MIDI-Clock: automatisch der erste verfuegbare Eingang (Entscheidung 78).
@@ -59,18 +68,29 @@ void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerB
 
 void Processor::setInstrument (std::unique_ptr<Instrument> instrument) noexcept
 {
-    if (m_instrument != nullptr)
-    {
-        m_instrument->hideEditor();  // offenes Plugin-Fenster schliessen
-        m_instrument->reset();       // alte Noten sofort stoppen
-    }
-
-    m_instrument = std::move (instrument);
-
-    if (m_instrument != nullptr)
+    // Neues Instrument vollstaendig vorbereiten, BEVOR es der Audio-Thread
+    // sehen kann. Sonst kann processBlock bereits laufen, waehrend prepare()
+    // den Scratch-Puffer dimensioniert -> Use-after-free im Plugin.
+    if (instrument != nullptr)
     {
         const double sr = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
-        m_instrument->prepare (sr);
+        instrument->prepare (sr);
+    }
+
+    std::unique_ptr<Instrument> old;
+
+    {
+        const std::lock_guard<std::mutex> lock (m_instrumentMutex);
+        old = std::move (m_instrument);
+        m_instrument = std::move (instrument);
+    }
+
+    // Erst nach dem Tausch aufraeumen: der Audio-Thread arbeitet jetzt mit
+    // dem neuen Instrument und fasst das alte nicht mehr an.
+    if (old != nullptr)
+    {
+        old->hideEditor();  // offenes Plugin-Fenster schliessen
+        old->reset();       // alte Noten sofort stoppen
     }
 }
 
@@ -78,6 +98,8 @@ void Processor::releaseResources()
 {
     closeClockInput();
     m_bridge.requestAllNotesOff();
+
+    const std::lock_guard<std::mutex> lock (m_instrumentMutex);
     if (m_instrument) m_instrument->reset();
 }
 
@@ -288,8 +310,14 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
             m_playbackTick += (blockEndTick - blockStartTick);
         }
 
-        if (m_instrument != nullptr)
-            m_instrument->process (midiMessages, buffer);
+        {
+            // Tausch nur kurz gesperrt; der Audio-Thread sieht entweder das
+            // alte oder das neue, vollstaendig vorbereitete Instrument.
+            const std::lock_guard<std::mutex> lock (m_instrumentMutex);
+
+            if (m_instrument != nullptr)
+                m_instrument->process (midiMessages, buffer);
+        }
     }
 }
 
