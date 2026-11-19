@@ -117,6 +117,13 @@ TEST_CASE ("Dateiname ist ASCII und enthaelt Zeitstempel, Grundton, Skala, BPM",
     const auto take = MidiExport::suggestedRecordingFileName (options);
     REQUIRE (take.startsWith ("Heptachord_Aufnahme_"));
     REQUIRE (take.endsWith ("_H_Moll_120.mid"));
+
+    // Entscheidung 99: nur Drag-Dateien bekommen VST-Info angehaengt.
+    REQUIRE (MidiExport::withInstrumentInfo (name, "Osirus", "Init Patch")
+             == name.replace (".mid", "_Osirus_Init-Patch.mid"));
+    REQUIRE (MidiExport::withInstrumentInfo (name, {}, {}) == name);
+    REQUIRE (MidiExport::withInstrumentInfo (take, "OsTIrus", "Bass 01")
+             .endsWith ("_OsTIrus_Bass-01.mid"));
 }
 
 TEST_CASE ("Zwei Exporte bei gleichem Seed sind bitgleich", "[midiexport]")

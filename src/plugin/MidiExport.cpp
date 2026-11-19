@@ -97,13 +97,42 @@ bool MidiExport::saveToFile (const juce::File& file,
     return true;
 }
 
-juce::File MidiExport::writeTempFile (const midirender::RenderOptions& options)
+juce::String MidiExport::withInstrumentInfo (const juce::String& fileName,
+                                             const juce::String& instrumentName,
+                                             const juce::String& patchName)
+{
+    auto result = fileName;
+    const auto extension = juce::File (fileName).getFileExtension();
+
+    if (extension.isNotEmpty())
+        result = result.dropLastCharacters (extension.length());
+
+    const auto add = [&result] (const juce::String& text)
+    {
+        const auto slug = asciiSlug (text);
+        if (slug.isNotEmpty())
+            result += "_" + slug;
+    };
+
+    add (instrumentName);
+
+    if (patchName.isNotEmpty())
+        add (patchName);
+
+    return result + extension;
+}
+
+juce::File MidiExport::writeTempFile (const midirender::RenderOptions& options,
+                                      const juce::String& instrumentName,
+                                      const juce::String& patchName)
 {
     const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory)
                          .getChildFile ("Heptachord");
     dir.createDirectory();
 
-    const auto file = dir.getChildFile (suggestedFileName (options));
+    const auto name = withInstrumentInfo (suggestedFileName (options),
+                                          instrumentName, patchName);
+    const auto file = dir.getChildFile (name);
     return saveToFile (file, options) ? file : juce::File {};
 }
 

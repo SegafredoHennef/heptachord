@@ -1148,13 +1148,25 @@ void Editor::exportMidi()
         });
 }
 
+Editor::DragInstrument Editor::dragInstrument() const
+{
+    auto* inst = processor.instrument();
+
+    if (dynamic_cast<VstPluginInstrument*> (inst) == nullptr)
+        return {};  // interner Synth: keine Plugin-Info im Namen
+
+    return { inst->getName(), inst->patchName() };
+}
+
 void Editor::dragMidi()
 {
     // Temporaere Datei schreiben, dann den nativen Drag-Vorgang starten.
     // juce::Component::startDragging muss aus einem Maus-Event kommen: der
     // Knopf ist ein Toggle, der onClick dreht - wir starten den Drag hier
     // ueber das Quell-Component und den letzten Mausdruck.
-    const auto file = MidiExport::writeTempFile (processor.exportOptions());
+    const auto info = dragInstrument();
+    const auto file = MidiExport::writeTempFile (processor.exportOptions(),
+                                                 info.name, info.patch);
 
     if (! file.existsAsFile())
         return;
@@ -1178,8 +1190,10 @@ void Editor::dragRecording()
                          .getChildFile ("Heptachord");
     dir.createDirectory();
 
-    const auto file = dir.getChildFile (
-        MidiExport::suggestedRecordingFileName (processor.exportOptions()));
+    const auto info = dragInstrument();
+    const auto file = dir.getChildFile (MidiExport::withInstrumentInfo (
+        MidiExport::suggestedRecordingFileName (processor.exportOptions()),
+        info.name, info.patch));
 
     if (! processor.saveRecordingToFile (file))
         return;

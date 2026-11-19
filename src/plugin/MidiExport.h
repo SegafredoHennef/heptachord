@@ -26,7 +26,16 @@ public:
 
     // Schreibt in eine temporaere Datei fuer Drag & Drop (M2, Decision 85).
     // Der Rueckgabepfad bleibt bis zum naechsten Aufruf gueltig.
-    static juce::File writeTempFile (const midirender::RenderOptions& options);
+    // Optional werden VST-Name und Patch an den Vorschlag gehaengt (Entscheidung 99).
+    static juce::File writeTempFile (const midirender::RenderOptions& options,
+                                     const juce::String& instrumentName = {},
+                                     const juce::String& patchName = {});
+
+    // Haengt VST-Name (und ggf. Patch) an einen Dateinamen an, bevor die
+    // Endung kommt. Leere Namen werden uebergangen.
+    static juce::String withInstrumentInfo (const juce::String& fileName,
+                                            const juce::String& instrumentName,
+                                            const juce::String& patchName);
 
     // Dateiname-Vorschlag (Entscheidung 97):
     // Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.mid

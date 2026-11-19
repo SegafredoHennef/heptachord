@@ -214,6 +214,14 @@ private:
     void exportNotes();
     void saveRecording();
     void dragRecording();
+
+    // Instrument-Info fuer Drag-Dateinamen: nur bei geladenem VST gefuellt.
+    struct DragInstrument
+    {
+        juce::String name;
+        juce::String patch;
+    };
+    DragInstrument dragInstrument() const;
     void updateRecorderButtons();
     void updateRecordingStatus();
     void loadInstrument();

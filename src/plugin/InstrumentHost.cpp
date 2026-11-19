@@ -493,6 +493,52 @@ juce::String VstPluginInstrument::getName() const
     return m_pluginName.isNotEmpty() ? m_pluginName : "VST-Plugin";
 }
 
+// Generische Programmnamen vieler VSTs sind als Dateiname wertlos.
+bool isGenericPatchName (const juce::String& name)
+{
+    const auto lower = name.trim().toLowerCase();
+
+    if (lower.isEmpty())
+        return true;
+
+    static const char* prefixes[] = {
+        "init", "initial", "default", "program", "preset",
+        "factory", "untitled", "basic", "patch"
+    };
+
+    for (auto* prefix : prefixes)
+    {
+        const juce::String p (prefix);
+
+        if (lower == p)
+            return true;
+
+        if (lower.startsWith (p))
+        {
+            const auto rest = lower.substring (p.length()).trim();
+
+            if (rest.isEmpty() || rest.containsOnly ("0123456789 -_#."))
+                return true;
+        }
+    }
+
+    return false;
+}
+
+juce::String VstPluginInstrument::patchName() const
+{
+    if (m_plugin == nullptr)
+        return {};
+
+    const int program = m_plugin->getCurrentProgram();
+
+    if (program < 0)
+        return {};
+
+    const auto name = m_plugin->getProgramName (program);
+    return isGenericPatchName (name) ? juce::String {} : name;
+}
+
 // -----------------------------------------------------------------------------
 // Factory
 // -----------------------------------------------------------------------------

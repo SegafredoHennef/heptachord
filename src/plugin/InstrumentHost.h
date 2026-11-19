@@ -32,6 +32,10 @@ public:
 
     // Anzeigename fuer die UI.
     virtual juce::String getName() const = 0;
+
+    // Name des im Instrument gerade eingestellten Patch/Programs. Leer, wenn
+    // das Instrument keine Patch-Information anbietet (z. B. interner Synth).
+    virtual juce::String patchName() const { return {}; }
 };
 
 // Adapter um den eingebauten TestSynth.
@@ -77,6 +81,7 @@ public:
     void hideEditor() override;
     bool isEditorOpen() const override;
     juce::String getName() const override;
+    juce::String patchName() const override;
 
 private:
     std::unique_ptr<juce::AudioPluginFormatManager> m_formatManager;

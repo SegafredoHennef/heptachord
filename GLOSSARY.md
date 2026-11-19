@@ -121,7 +121,13 @@ Stimme pro Kanal) oder `Single` (alle Stimmen auf einem Kanal).
 _Avoid_: Routing, Kanalmodus, Split
 
 **Preset**:
-Ein vollständiger, benannter Parametersatz, gespeichert als
+Ein vollständiger, benannter Parametersatz von Heptachord, gespeichert als
 `.heptachord`-Datei (JSON, `schemaVersion` 1). Choice-Parameter liegen als
 Index, Bool als 0/1, der Trigger `reset` ist ausgenommen.
-_Avoid_: Patch, Sound, Bank
+_Avoid_: Patch, Sound, Bank, VST-Patch
+
+**VST-Patch**:
+Das im geladenen VST3-Instrument gerade eingestellte Programm oder Preset.
+Es wird vom Plugin verwaltet, nicht von Heptachord, und ist vom Heptachord-
+Preset zu unterscheiden.
+_Avoid_: Preset, Programm, Heptachord-Preset

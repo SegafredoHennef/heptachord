@@ -70,6 +70,8 @@ wenn eine Aufnahme existiert). EXPORT, WAV und NOTEN erzeugen weiterhin genau
 einen Zyklus aus den aktuellen Parametern (ADR 0010). Alle Dateinamen folgen
 `Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.<Endung>` bzw.
 `Heptachord_Aufnahme_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.mid`.
+Bei geladenem VST3 enthalten die gedraggten Dateien außerdem VST-Name und
+(einem erkannten) Patch im Namen; beim internen Synth entfallen diese Teile.
 Das VST3-Plugin selbst wird nicht per Drag & Drop übergeben — es wird in den
 VST3-Ordner kopiert und von der DAW gescannt (siehe Download).
 

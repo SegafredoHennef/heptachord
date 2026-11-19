@@ -479,3 +479,15 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Datei zwar ziehen, aber eine DAW uebernimmt damit kein Plugin (Scanner
     statt Drag), und `m_instrumentFiles` enthaelt das externe Instrument,
     nicht Heptachords eigenes Plugin. Stattdessen Doku-Klarstellung.
+
+## Runde 22 (VST-Info im Drag-Namen)
+
+99. **VST-Name und Patch im gedraggten Dateinamen** - Nur die per DRAG bzw.
+    DRAG REC erzeugten temporaeren `.mid`-Namen werden um die Info des
+    geladenen VSTs ergaenzt: `Heptachord_<stamp>_<Grundton>_<Skala>_<BPM>
+    _<VST-Name>[_<Patch>].mid`. `Instrument::patchName()` liefert sie ueber
+    JUCEs `getCurrentProgram()`/`getProgramName()` zum Drag-Zeitpunkt;
+    generische Namen (Init, Default, Program 1, …) werden ausgelassen.
+    Beim internen Synth entfallen beide Teile. Uebrige Exportpfade
+    (SPEICHERN/EXPORT/WAV/NOTEN) behalten das Schema aus Entscheidung 97.
+    Glossar: neuer Begriff **VST-Patch**, getrennt von Heptachords **Preset**.

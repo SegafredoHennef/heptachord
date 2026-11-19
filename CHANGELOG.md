@@ -33,7 +33,9 @@ werden damit abgelöst. Der Branch `release/v0.1.7-stable` enthält diesen Stand
 - VST3-Ladedialog startet im Standardordner `Common Files\VST3`.
 - Einheitliche Dateinamen `Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>`
   (Aufnahme mit `Aufnahme_` im Präfix); zweiter Drag-Knopf `DRAG REC` für die
-  gesamte Aufnahme. Das VST3-Plugin wird nicht per Drag übergeben (Doku).
+  gesamte Aufnahme. Gedraggte Dateien enthalten bei geladenem VST zusätzlich
+  VST-Name und Patch; beim internen Synth entfallen diese Angaben. Das VST3-
+  Plugin selbst wird nicht per Drag übergeben (Doku).
 - Prüfung: 150 Testfälle / 15757 Assertions, `ctest --preset ninja` 100 %,
   VST-Auto-Tests der sechs zuvor crashenden Instrumente mit `exit=0`.
 
