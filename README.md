@@ -70,10 +70,8 @@ und NOTEN erzeugen weiterhin genau einen Zyklus aus den aktuellen Parametern
 
 ## Download
 
-Aktueller stabiler Quellstand: **v0.1.7** (Branch `release/v0.1.7-stable`).
-Ein Release-ZIP mit SHA-256 steht für v0.1.7 noch nicht bereit; bitte aus dem
-Quellstand bauen (CMake-Preset `ninja`). Für die letzte veröffentlichte ZIP
-siehe `CHANGELOG.md` (v0.1.4).
+Aktuelle Version: **v0.1.7** (`Heptachord-0.1.7-win.zip`, SHA-256 steht im
+`CHANGELOG.md`). Quellstand: Branch `release/v0.1.7-stable`.
 
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
   (z. B. `C:\Program Files\Common Files\VST3`), dann einmal scannen lassen.

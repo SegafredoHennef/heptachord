@@ -30,8 +30,12 @@ werden damit abgelöst. Der Branch `release/v0.1.7-stable` enthält diesen Stand
   VST-Instrumente erhalten MIDI auf Kanal 1–4 (vorerst nur THRU war hörbar).
 - Editor-Fenster: Position nur bei voller Sichtbarkeit gemerkt; zu große
   Fenster (z. B. Surge XT) werden mit erreichbarer Titelzeile platziert.
+- VST3-Ladedialog startet im Standardordner `Common Files\VST3`.
 - Prüfung: 150 Testfälle / 15757 Assertions, `ctest --preset ninja` 100 %,
   VST-Auto-Tests der sechs zuvor crashenden Instrumente mit `exit=0`.
+
+ZIP `Heptachord-0.1.7-win.zip` (5,4 MB), SHA-256:
+`1A6731BF9F5FC61513B621A6AF0C925FFB4212C33C38BD35F579ECBC055A9556`
 
 ## v0.1.4
 
