@@ -6,12 +6,16 @@
 #include <cmath>
 #include <fstream>
 #include <algorithm>
+#include <map>
 
 namespace heptachord
 {
 
 namespace
 {
+// Vorwaertsdeklaration: wird unten bei den Editor-Fenstern definiert.
+void rememberEditorBounds (const juce::String& key, const juce::Rectangle<int>& bounds);
+
 // Debug-Log nur auf Anforderung (Entwicklung/Diagnose ueber
 // HEPTACHORD_VST_DEBUG=1). Im normalen Betrieb wird keine Datei geschrieben.
 bool vstDebugEnabled()
@@ -291,6 +295,7 @@ void VstPluginInstrument::unload()
     // darf nicht an einem toten AudioProcessor haengen.
     if (m_editorWindow != nullptr)
     {
+        rememberEditorBounds (m_pluginName, m_editorWindow->getBounds());
         m_editorWindow->setVisible (false);
         m_editorWindow.reset();  // zerstoert auch den Editor (setContentOwned)
     }
@@ -308,6 +313,27 @@ bool VstPluginInstrument::hasEditor() const
 // Fenster mit Titelleiste und Schliessen-Button fuer VST-Editor.
 namespace
 {
+// Groesse/Position pro Plugin fuer die laufende Sitzung merken (auch ueber
+// einen Instrument-Wechsel hinweg).
+std::map<juce::String, juce::Rectangle<int>> s_editorBounds;
+
+void rememberEditorBounds (const juce::String& key, const juce::Rectangle<int>& bounds)
+{
+    if (bounds.getWidth() < 200 || bounds.getHeight() < 120)
+        return;
+
+    if (! juce::Desktop::getInstance().getDisplays().getTotalBounds (true).intersects (bounds))
+        return;
+
+    s_editorBounds[key] = bounds;
+}
+
+juce::Rectangle<int> rememberedEditorBounds (const juce::String& key)
+{
+    const auto it = s_editorBounds.find (key);
+    return it != s_editorBounds.end() ? it->second : juce::Rectangle<int> {};
+}
+
 class VstEditorWindow : public juce::DocumentWindow
 {
 public:
@@ -323,7 +349,10 @@ public:
     void closeButtonPressed() override
     {
         if (owner != nullptr)
+        {
+            rememberEditorBounds (owner->getName(), getBounds());
             owner->hideEditor();
+        }
     }
 
     VstPluginInstrument* owner = nullptr;
@@ -340,6 +369,10 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
     // jederzeit funktioniert.
     if (m_editorWindow != nullptr)
     {
+        const auto saved = rememberedEditorBounds (m_pluginName);
+        if (! saved.isEmpty())
+            m_editorWindow->setBounds (saved);
+
         m_editorWindow->setVisible (true);
         m_editorWindow->toFront (true);
         return;
@@ -354,8 +387,13 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
     auto* window = new VstEditorWindow (m_plugin->getName(), this);
     m_editorWindow.reset (window);
     window->setContentOwned (m_editor.release(), true);
-    window->centreWithSize (window->getContentComponent()->getWidth(),
-                            window->getContentComponent()->getHeight());
+
+    const auto saved = rememberedEditorBounds (m_pluginName);
+    if (! saved.isEmpty())
+        window->setBounds (saved);
+    else
+        window->centreWithSize (window->getContentComponent()->getWidth(),
+                                window->getContentComponent()->getHeight());
 
     m_editorWindow->setVisible (true);
     m_editorWindow->toFront (true);
@@ -364,9 +402,13 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
 void VstPluginInstrument::hideEditor()
 {
     // Nur verstecken — Fenster und Editor bleiben erhalten, damit der
-    // EDITOR-Knopf den Editor jederzeit wieder oeffnen kann.
+    // EDITOR-Knopf den Editor jederzeit wieder oeffnen kann. Position und
+    // Groesse werden gemerkt und beim naechsten Oeffnen wiederhergestellt.
     if (m_editorWindow != nullptr)
+    {
+        rememberEditorBounds (m_pluginName, m_editorWindow->getBounds());
         m_editorWindow->setVisible (false);
+    }
 }
 
 bool VstPluginInstrument::isEditorOpen() const

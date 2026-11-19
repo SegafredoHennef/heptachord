@@ -4,12 +4,16 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Offen
 
-- [ ] GUI-Zoom (100/125/150/175/200 %) aus v0.1.6 auf v0.1.4-Basis portieren
-- [ ] INSTRUMENT-Panel im Global-Bereich (aus v0.1.6) portieren
+- [ ] GUI-Zoom (100/125/150/175/200 %) — Port aus v0.1.6 verworfen: der
+      `AffineTransform`-Zoom skaliert in der Standalone doppelt und schneidet
+      Steuerelemente ab; braucht eine saubere Container-Loesung (separater
+      Inhalts-Container), bevor es ausgeliefert wird
+- [x] INSTRUMENT-Panel im Global-Bereich (aus v0.1.6) portiert
 - [ ] "Skala zwei mal auswaehlbar" — klaeren, welche ComboBox entfernt werden soll
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
 - [ ] main-Branch bereinigen (v0.1.5/v0.1.6-Features die crashen entfernen)
-- [ ] VITAL-Editor-Fenster: Groesse/Position merken, ggf. Schliessen-Button-Feedback
+- [x] VST-Editor-Fenster: Groesse/Position pro Plugin in der Sitzung merken,
+      EDITOR-Knopf als Toggle mit Offen-Zustand (Farbe/Text)
 - [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
   kein Sound trotz Instrument: DX7 V, Analog Lab 3, SongEngine, OB-Xd 3 (evtl. kein Default-Patch
@@ -21,6 +25,10 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Erledigt
 
+- [x] INSTRUMENT-Panel im Global-Bereich (Port aus v0.1.6), Editor-Fenster
+      merkt Groesse/Position, EDITOR-Knopf als Toggle mit Rueckmeldung
+- [x] Release-Doku CHANGELOG/README auf v0.1.7 nachgezogen; stabiler Stand
+      als `release/v0.1.7-stable` auf den Remote gepusht (origin/main unveraendert)
 - [x] NOTEN-Export (MIDI + Text): ein Speichern-Dialog fuer beide Dateien,
       Text mit konsistenter Step-Spalte (1-basiert, Off gehoert zum On), Tests in test_midirender.cpp
 - [x] Aufnahme ueber mehrere Zyklen als Take: slotbasierte Zykluszaehlung,

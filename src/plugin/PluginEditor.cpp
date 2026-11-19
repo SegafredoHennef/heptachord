@@ -182,8 +182,18 @@ Editor::Editor (Processor& processorToEdit)
         loadButton.onClick = [this] { loadInstrument(); };
         addAndMakeVisible (loadButton);
 
-        editButton.setTooltip ("Plugin-Editor-Fenster oeffnen");
-        editButton.onClick = [this] { showInstrumentEditor(); };
+        editButton.setTooltip ("Plugin-Editor-Fenster oeffnen/schliessen");
+        editButton.onClick = [this]
+        {
+            auto* inst = processor.instrument();
+            if (inst == nullptr || ! inst->hasEditor())
+                return;
+
+            if (inst->isEditorOpen())
+                inst->hideEditor();
+            else
+                showInstrumentEditor();
+        };
         editButton.setEnabled (false);
         addAndMakeVisible (editButton);
 
@@ -642,6 +652,20 @@ void Editor::timerCallback()
     {
         updateRecorderButtons();
         updateRecordingStatus();
+
+        // Rueckmeldung am EDITOR-Knopf: offenes Plugin-Fenster = markiert,
+        // und der Knopf schliesst es dann wieder.
+        auto* inst = processor.instrument();
+        const bool editorOpen = inst != nullptr && inst->isEditorOpen();
+        const juce::String text = editorOpen ? "EDITOR ●" : "EDITOR";
+
+        if (editButton.getButtonText() != text)
+        {
+            editButton.setButtonText (text);
+            editButton.setColour (juce::TextButton::buttonColourId,
+                editorOpen ? HeptachordLookAndFeel::accent()
+                           : HeptachordLookAndFeel::panelRaised());
+        }
     }
 }
 
@@ -1251,6 +1275,7 @@ void Editor::resized()
         staticCaptions.push_back ({ { anchor.getX(), anchor.getY() - 12, anchor.getWidth(), 11 },
                                     entry.text });
     }
+
 }
 
 void Editor::layoutHeader (juce::Rectangle<int> area)
@@ -1266,12 +1291,6 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
 
-    if (standalone)
-    {
-        instrumentBox->setBounds (buttons.removeFromRight (140).reduced (2, 6));
-        loadButton.setBounds (buttons.removeFromRight (70).reduced (2, 6));
-        editButton.setBounds (buttons.removeFromRight (60).reduced (2, 6));
-    }
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)
@@ -1279,7 +1298,7 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     auto inner = area.reduced (kPanelPadding);
     inner.removeFromTop (kZoneTitleHeight);
 
-    constexpr int count = 11;
+    constexpr int count = 12;
     const int cellWidth = inner.getWidth() / count;
 
     const auto cellAt = [&inner, cellWidth] (int index)
@@ -1315,6 +1334,19 @@ void Editor::layoutGlobal (juce::Rectangle<int> area)
     placeToggle (latchButton, cellAt (8));
     placeChoice (outputBox, cellAt (9));
     placeKnob (tempoKnob, cellAt (10));
+
+    // INSTRUMENT-Panel im Global-Bereich (v0.1.6, auf stabile Basis portiert):
+    // ComboBox oben, LADEN... und EDITOR nebeneinander darunter.
+    if (standalone)
+    {
+        const auto instCell = cellAt (11);
+        instrumentBox->setBounds (instCell.getX(), instCell.getY() + 6,
+                                  instCell.getWidth(), 24);
+
+        const int half = instCell.getWidth() / 2;
+        loadButton.setBounds (instCell.getX(), instCell.getY() + 34, half - 2, 22);
+        editButton.setBounds (instCell.getX() + half + 2, instCell.getY() + 34, half - 4, 22);
+    }
 }
 
 void Editor::layoutVoices (juce::Rectangle<int> area)

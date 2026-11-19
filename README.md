@@ -9,14 +9,17 @@ Heptachord ist ein **Instrument mit stillem Audio-Ausgang**: es verarbeitet kein
 Audio, sondern gibt Noten auf MIDI-Kanälen aus (ADR 0001). Die Standalone-
 Variante bringt einen einfachen Test-Synth mit.
 
-**Status: v0.1.4.** Signalweg (M2b), Oberfläche (M3), Presets (M5)
-und MIDI-Clock sind fertig: alle 117 Parameter liegen auf einer Seite (globale
-Leiste, Stimmen, acht Step-Spalten), das Erscheinungsbild ist ein eigenes
-dunkles Look-and-Feel, 96 Factory-Presets (12 Grundtöne × 8 Skalen) laden
-aus der Kopfzeile, und der Bezeichnungsmodus schaltet die Noten- und
-Skalennamen zwischen Deutsch, International (b) und International (#) um.
+**Status: v0.1.7.** Signalweg (M2b), Oberfläche (M3), Presets (M5)
+und MIDI-Clock sind fertig: alle 118 Parameter liegen auf einer Seite (globale
+Leiste mit INSTRUMENT-Panel, Stimmen, acht Step-Spalten), das Erscheinungsbild
+ist ein eigenes dunkles Look-and-Feel, 96 Factory-Presets (12 Grundtöne × 8
+Skalen), und der Bezeichnungsmodus schaltet die Noten- und Skalennamen zwischen
+Deutsch, International (b) und International (#) um. Sechs Richtungsmodi und
+die gelbe Step-Markierung machen die Traversal sichtbar.
 Der Standalone exportiert einen Zyklus als MIDI-Datei (deterministisch,
 Seed 1) oder zieht ihn per Drag & Drop in eine DAW, sowie als WAV (Test-Synth).
+NOTEN schreibt MIDI + Text mit Step-Spalte; die Aufnahme läuft über mehrere
+Zyklen mit Live-Anzeige und wird über SPEICHERN als Ganzes gesichert.
 Der Standalone folgt im Play-Modus dem ersten MIDI-Eingang als Clock-Master
 (FA/FC/FB, 30–300 BPM, 2 s Timeout → Fallback auf 120 BPM); ohne Clock läuft
 der manuelle Transport wie bisher.
@@ -67,8 +70,10 @@ und NOTEN erzeugen weiterhin genau einen Zyklus aus den aktuellen Parametern
 
 ## Download
 
-Aktuelle Version: **v0.1.4** (`Heptachord-0.1.4-win.zip`, SHA-256 steht im
-`CHANGELOG.md`).
+Aktueller stabiler Quellstand: **v0.1.7** (Branch `release/v0.1.7-stable`).
+Ein Release-ZIP mit SHA-256 steht für v0.1.7 noch nicht bereit; bitte aus dem
+Quellstand bauen (CMake-Preset `ninja`). Für die letzte veröffentlichte ZIP
+siehe `CHANGELOG.md` (v0.1.4).
 
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
   (z. B. `C:\Program Files\Common Files\VST3`), dann einmal scannen lassen.

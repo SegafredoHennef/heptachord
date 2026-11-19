@@ -2,6 +2,31 @@
 
 Die Detailentscheidungen stehen im Log `docs/entscheidungen.md`.
 
+## v0.1.7
+
+Stabiler Stand auf v0.1.4-Basis; die zurückgezogenen Linien v0.1.5/v0.1.6
+werden damit abgelöst. Der Branch `release/v0.1.7-stable` enthält diesen Stand.
+
+- VST3-Stabilität (ADR 0008): Scratch-Puffer mit der vollen Plugin-Kanalzahl
+  für Multi-Bus-Instrumente, Buslayout nur bei echter Änderung, Instrument-
+  Wechsel mit `prepare()` vor Veröffentlichung und Mutex-Schutz. Osirus,
+  OsTIrus, Vavra, Xenia, NodalRed2x und FabFilter Pro-Q 4 laufen damit im
+  vollen Auto-Test (Laden, Editor öffnen/schließen/neu öffnen, Wechsel, Noten).
+- `Reason Rack Plugin.vst3` wird wegen eines pluginseitigen Absturzes blockiert
+  (ADR 0009): klare Meldung statt Application Crash.
+- Sechs Richtungsmodi (Vorwärts, Rückwärts, Pendel I/II, Brownian, Zufall),
+  gelbe Step-Markierung, `currentStepIndex`-Fix.
+- NOTEN-Export: MIDI + Text mit konsistenter Step-Spalte; ein Speichern-Dialog
+  für beide Dateien (Entscheidung 88).
+- Aufnahme über mehrere Zyklen (ADR 0010): slotbasierte Zykluszählung, Zielwahl
+  unbegrenzt/1/2/4/8 mit Auto-Stop, Live-Anzeige `Zyklus n · Step m/8`,
+  SPEICHERN für die gesamte Aufnahme (erste Note bei Tick 0, Abschluss-Offs),
+  PLAY nur die Aufnahme ohne Engine-Noten.
+- INSTRUMENT-Panel im Global-Bereich (aus v0.1.6 portiert); das VST-Editor-
+  Fenster merkt Größe/Position, der EDITOR-Knopf zeigt den Offen-Zustand.
+- Prüfung: 150 Testfälle / 15757 Assertions, `ctest --preset ninja` 100 %,
+  VST-Auto-Tests der sechs zuvor crashenden Instrumente mit `exit=0`.
+
 ## v0.1.4
 
 - WAV-Export im Standalone: einen Zyklus durch den Test-Synth rendern und
