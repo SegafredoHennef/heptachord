@@ -458,3 +458,24 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     weder Routing noch Bus-Mapping die Ursache; eine frische Osirus-
     Instanz produziert keinen Ton. Kein Host-Fix moeglich — Beobachtung
     bleibt dokumentiert, kein Blocklist-Eintrag (Plugin crasht nicht).
+
+## Runde 21 (Dateinamen und Drag)
+
+97. **Einheitlicher Dateiname mit Zeitstempel, Grundton, Skala, BPM** -
+    Alle Vorschlaege (EXPORT, WAV, NOTEN, DRAG-Temp und SPEICHERN) nutzen
+    jetzt `Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.<ext>`
+    bzw. `Heptachord_Aufnahme_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.mid`.
+    BPM als ganze Zahl, Zeitstempel `%Y%m%d_%H%M%S`, ASCII-Slug wie bisher.
+    Die Rate fiel aus dem Namen heraus (war zuvor drin); der User-Wunsch
+    nennt explizit nur Zeitstempel, Grundton, Skala und BPM. Tests pruefen
+    Praefix/Suffix und Laenge statt eines festen Namens (Zeitstempel dynamisch).
+    „Tonart" wird nicht als neues Domänenkonzept eingefuehrt: Grundton und
+    Skala bleiben getrennte Begriffe laut Glossar.
+98. **Zweiter Drag-Knopf „DRAG REC"** - DRAG bleibt der Ein-Zyklus-Export
+    aus Parametern (Entscheidung 89). Der neue Knopf zieht die komplette
+    aufgenommene Aufnahme (alle Zyklen) als temporaere `.mid`-Datei aus
+    `<temp>/Heptachord/` und ist nur bei vorhandener Aufnahme aktiv.
+    Ein Drag des VST-Plugins wird **nicht** umgesetzt: JUCE koennte eine
+    Datei zwar ziehen, aber eine DAW uebernimmt damit kein Plugin (Scanner
+    statt Drag), und `m_instrumentFiles` enthaelt das externe Instrument,
+    nicht Heptachords eigenes Plugin. Stattdessen Doku-Klarstellung.

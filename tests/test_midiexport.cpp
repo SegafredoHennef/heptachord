@@ -98,18 +98,25 @@ TEST_CASE ("Leerer Zyklus schreibt kein File", "[midiexport]")
     REQUIRE_FALSE (MidiExport::writeTo (stream, options));
 }
 
-TEST_CASE ("Dateiname ist ASCII und enthaelt Grundton, Skala, Rate", "[midiexport]")
+TEST_CASE ("Dateiname ist ASCII und enthaelt Zeitstempel, Grundton, Skala, BPM", "[midiexport]")
 {
     auto options = baseOptions();
     options.settings.root = 0;
     options.settings.scale = Scale::Dur;
-    options.settings.rate = kRateValues[2];  // 1/8
+    options.bpm = 120.0;
 
-    REQUIRE (MidiExport::suggestedFileName (options) == "Heptachord_C_Dur_1-8.mid");
+    const auto name = MidiExport::suggestedFileName (options);
+    REQUIRE (name.startsWith ("Heptachord_"));
+    REQUIRE (name.endsWith ("_C_Dur_120.mid"));
+    REQUIRE (name.length() == juce::String ("Heptachord_20261119_143025_C_Dur_120.mid").length());
 
     options.settings.root = 11;  // H
     options.settings.scale = Scale::Moll;
-    REQUIRE (MidiExport::suggestedFileName (options) == "Heptachord_H_Moll_1-8.mid");
+    REQUIRE (MidiExport::suggestedFileName (options).endsWith ("_H_Moll_120.mid"));
+
+    const auto take = MidiExport::suggestedRecordingFileName (options);
+    REQUIRE (take.startsWith ("Heptachord_Aufnahme_"));
+    REQUIRE (take.endsWith ("_H_Moll_120.mid"));
 }
 
 TEST_CASE ("Zwei Exporte bei gleichem Seed sind bitgleich", "[midiexport]")

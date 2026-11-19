@@ -68,16 +68,19 @@ TEST_CASE ("Leerer Zyklus schreibt keine WAV", "[audioexport]")
     file.deleteFile();
 }
 
-TEST_CASE ("Dateiname ist ASCII mit .wav", "[audioexport]")
+TEST_CASE ("Dateiname enthaelt Zeitstempel, Grundton, Skala, BPM und .wav", "[audioexport]")
 {
     auto options = baseOptions();
     options.settings.root = 0;
     options.settings.scale = Scale::Dur;
-    options.settings.rate = kRateValues[2];
+    options.bpm = 120.0;
 
-    REQUIRE (AudioExport::suggestedFileName (options) == "Heptachord_C_Dur_1-8.wav");
+    const auto name = AudioExport::suggestedFileName (options);
+    REQUIRE (name.startsWith ("Heptachord_"));
+    REQUIRE (name.endsWith ("_C_Dur_120.wav"));
+    REQUIRE (name.length() == juce::String ("Heptachord_20261119_143025_C_Dur_120.wav").length());
 
     options.settings.root = 11;
     options.settings.scale = Scale::Moll;
-    REQUIRE (AudioExport::suggestedFileName (options) == "Heptachord_H_Moll_1-8.wav");
+    REQUIRE (AudioExport::suggestedFileName (options).endsWith ("_H_Moll_120.wav"));
 }

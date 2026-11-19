@@ -28,9 +28,13 @@ public:
     // Der Rueckgabepfad bleibt bis zum naechsten Aufruf gueltig.
     static juce::File writeTempFile (const midirender::RenderOptions& options);
 
-    // Dateiname-Vorschlag: Heptachord_<Grundton>_<Skala>_<Rate>.mid
-    // (ASCII, z. B. Heptachord_C_Dur_1-8.mid).
+    // Dateiname-Vorschlag (Entscheidung 97):
+    // Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.mid
     static juce::String suggestedFileName (const midirender::RenderOptions& options);
+
+    // Vorschlag fuer die aufgenommene Aufnahme:
+    // Heptachord_Aufnahme_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.mid
+    static juce::String suggestedRecordingFileName (const midirender::RenderOptions& options);
 };
 
 } // namespace heptachord

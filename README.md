@@ -64,9 +64,14 @@ Transport läuft bei Bedarf automatisch an); das Zielfeld begrenzt die Aufnahme
 auf 1/2/4/8 Zyklen oder lässt sie unbegrenzt bis STOP laufen. Die Anzeige zeigt
 live `Zyklus n · Step m/8`. STOP beendet die Aufnahme, SPEICHERN schreibt alle
 Zyklen als MIDI-Datei (erste Note bei Tick 0, keine hängenden Noten). PLAY
-spielt nur die Aufnahme ohne die Engine-Stimmen. Die Knöpfe EXPORT, DRAG, WAV
-und NOTEN erzeugen weiterhin genau einen Zyklus aus den aktuellen Parametern
-(ADR 0010).
+spielt nur die Aufnahme ohne die Engine-Stimmen. **DRAG** zieht einen
+Ein-Zyklus-Export in die DAW, **DRAG REC** die gesamte Aufnahme (nur aktiv,
+wenn eine Aufnahme existiert). EXPORT, WAV und NOTEN erzeugen weiterhin genau
+einen Zyklus aus den aktuellen Parametern (ADR 0010). Alle Dateinamen folgen
+`Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.<Endung>` bzw.
+`Heptachord_Aufnahme_<Zeitstempel>_<Grundton>_<Skala>_<BPM>.mid`.
+Das VST3-Plugin selbst wird nicht per Drag & Drop übergeben — es wird in den
+VST3-Ordner kopiert und von der DAW gescannt (siehe Download).
 
 ## Download
 

@@ -128,9 +128,13 @@ juce::String AudioExport::suggestedFileName (const midirender::RenderOptions& op
             rateIndex = i;
             break;
         }
-    juce::String rateName = juce::String (params::kChoices2[rateIndex]);
+    juce::ignoreUnused (rateIndex);
 
-    return "Heptachord_" + asciiSlug (rootName) + "_" + asciiSlug (scaleName)
-         + "_" + asciiSlug (rateName) + ".wav";
+    // Entscheidung 97: Zeitstempel_Grundton_Skala_BPM (BPM als ganze Zahl).
+    const juce::String stamp = juce::Time::getCurrentTime().formatted ("%Y%m%d_%H%M%S");
+    const int bpm = juce::jlimit (1, 999, static_cast<int> (std::llround (options.bpm)));
+
+    return "Heptachord_" + stamp + "_" + asciiSlug (rootName) + "_"
+         + asciiSlug (scaleName) + "_" + juce::String (bpm) + ".wav";
 }
 } // namespace heptachord

@@ -213,6 +213,7 @@ private:
     void exportWav();
     void exportNotes();
     void saveRecording();
+    void dragRecording();
     void updateRecorderButtons();
     void updateRecordingStatus();
     void loadInstrument();
@@ -223,6 +224,7 @@ private:
     void showInstrumentEditor();
     juce::TextButton exportButton { "EXPORT" };
     MidiDragButton dragButton { "DRAG" };
+    MidiDragButton dragRecButton { "DRAG REC" };
     juce::TextButton wavButton { "WAV" };
     juce::TextButton notesButton { "NOTEN" };
     juce::TextButton recButton { "REC" };

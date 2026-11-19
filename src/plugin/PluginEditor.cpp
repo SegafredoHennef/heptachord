@@ -137,8 +137,12 @@ Editor::Editor (Processor& processorToEdit)
         exportButton.onClick = [this] { exportMidi(); };
 
         m_content.addAndMakeVisible (dragButton);
-        dragButton.setTooltip ("MIDI-Datei auf ein anderes Programm ziehen");
+        dragButton.setTooltip ("Einen MIDI-Zyklus auf ein anderes Programm ziehen");
         dragButton.onDragStart = [this] { dragMidi(); };
+
+        m_content.addAndMakeVisible (dragRecButton);
+        dragRecButton.setTooltip ("Die gesamte aufgenommene Aufnahme (alle Zyklen) ziehen");
+        dragRecButton.onDragStart = [this] { dragRecording(); };
 
         m_content.addAndMakeVisible (wavButton);
         wavButton.setTooltip ("Einen Zyklus als WAV rendern (Test-Synth)");
@@ -947,6 +951,7 @@ void Editor::updateRecorderButtons()
     stopButton.setEnabled (true);  // immer verfuegbar: stoppt auch den Transport
     clearButton.setEnabled (hasRec || recording || armed);
     saveRecordingButton.setEnabled (hasRec);
+    dragRecButton.setEnabled (hasRec);
 
     recButton.repaint();
     playButton.repaint();
@@ -993,12 +998,10 @@ void Editor::saveRecording()
     if (! processor.hasRecording())
         return;
 
-    const juce::String stamp = juce::Time::getCurrentTime().formatted ("%Y%m%d_%H%M%S");
-
     fileChooser = std::make_unique<juce::FileChooser> (
         "Aufnahme speichern",
         juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
-            .getChildFile ("Heptachord_Aufnahme_" + stamp + ".mid"),
+            .getChildFile (MidiExport::suggestedRecordingFileName (processor.exportOptions())),
         "*.mid");
 
     fileChooser->launchAsync (
@@ -1163,6 +1166,29 @@ void Editor::dragMidi()
 
     // Der Editor ist selbst der DragAndDropContainer (siehe Header).
     startDragging (juce::var (files), &dragButton);
+}
+
+void Editor::dragRecording()
+{
+    if (! processor.hasRecording())
+        return;
+
+    // Die komplette Aufnahme in eine temporaere Datei schreiben und ziehen.
+    const auto dir = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                         .getChildFile ("Heptachord");
+    dir.createDirectory();
+
+    const auto file = dir.getChildFile (
+        MidiExport::suggestedRecordingFileName (processor.exportOptions()));
+
+    if (! processor.saveRecordingToFile (file))
+        return;
+
+    lastExportedFile = file;
+
+    juce::Array<juce::var> files;
+    files.add (file.getFullPathName());
+    startDragging (juce::var (files), &dragRecButton);
 }
 
 int Editor::currentNameMode() const
@@ -1368,9 +1394,10 @@ void Editor::resized()
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (850);
+                              .removeFromRight (940);
         exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 1));
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 1));
+        dragRecButton.setBounds (titleRight.removeFromLeft (88).reduced (0, 1));
         wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
         notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
         recordingStatusLabel.setBounds (titleRight.removeFromLeft (155).reduced (0, 1));
