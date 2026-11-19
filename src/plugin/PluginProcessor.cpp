@@ -19,14 +19,6 @@ Processor::Processor()
 {
     m_binding.connect (apvts);
 
-    // Standalone: H1/H2/H3 standardmaessig ausgeschaltet (nur Thru aktiv).
-    if (isStandalone())
-    {
-        apvts.getParameter ("h1.enable")->setValueNotifyingHost (0.0f);
-        apvts.getParameter ("h2.enable")->setValueNotifyingHost (0.0f);
-        apvts.getParameter ("h3.enable")->setValueNotifyingHost (0.0f);
-    }
-
     m_instrument = createTestSynthInstrument();
 }
 

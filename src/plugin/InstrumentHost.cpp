@@ -317,15 +317,59 @@ namespace
 // einen Instrument-Wechsel hinweg).
 std::map<juce::String, juce::Rectangle<int>> s_editorBounds;
 
-void rememberEditorBounds (const juce::String& key, const juce::Rectangle<int>& bounds)
+// Ein gemerktes Fenster nur dann wiederherstellen, wenn es vollständig im
+// nutzbaren Bereich eines Displays liegt. Eine blosse Ueberschneidung
+// reicht nicht: Titelzeile und Bedienelemente koennen sonst ausserschirm
+// liegen und das Fenster ist nicht mehr bedienbar (Surge-Fall).
+bool isUsableEditorBounds (const juce::Rectangle<int>& bounds)
 {
     if (bounds.getWidth() < 200 || bounds.getHeight() < 120)
-        return;
+        return false;
 
-    if (! juce::Desktop::getInstance().getDisplays().getTotalBounds (true).intersects (bounds))
+    const auto* display = juce::Desktop::getInstance().getDisplays()
+                              .getDisplayForRect (bounds);
+
+    return display != nullptr && display->userBounds.contains (bounds.toFloat());
+}
+
+void rememberEditorBounds (const juce::String& key, const juce::Rectangle<int>& bounds)
+{
+    if (! isUsableEditorBounds (bounds))
         return;
 
     s_editorBounds[key] = bounds;
+}
+
+// Ein zu grosses Editor-Fenster (z. B. Surge XT) wird von centreWithSize mit
+// negativer Position platziert - Titelzeile und Bedienelemente sind dann
+// nicht mehr erreichbar. Mindestens eine bedienbare Ecke muss im sichtbaren
+// Bereich liegen; die Groesse bleibt erhalten, damit der Editor nicht
+// abgeschnitten wird.
+void placeEditorWindow (juce::Component& window, const juce::Rectangle<int>& preferred)
+{
+    const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+
+    if (display == nullptr)
+    {
+        window.setBounds (preferred);
+        return;
+    }
+
+    const auto area = display->userBounds.toFloat().getSmallestIntegerContainer().reduced (4);
+    auto bounds = preferred;
+
+    const int minVisibleWidth = juce::jmin (200, area.getWidth());
+    const int minVisibleHeight = juce::jmin (60, area.getHeight());
+
+    const int x = juce::jlimit (area.getX(),
+                                juce::jmax (area.getX(), area.getRight() - minVisibleWidth),
+                                bounds.getX());
+    const int y = juce::jlimit (area.getY(),
+                                juce::jmax (area.getY(), area.getBottom() - minVisibleHeight),
+                                bounds.getY());
+
+    bounds.setPosition (x, y);
+    window.setBounds (bounds);
 }
 
 juce::Rectangle<int> rememberedEditorBounds (const juce::String& key)
@@ -370,8 +414,14 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
     if (m_editorWindow != nullptr)
     {
         const auto saved = rememberedEditorBounds (m_pluginName);
-        if (! saved.isEmpty())
-            m_editorWindow->setBounds (saved);
+        if (! saved.isEmpty() && isUsableEditorBounds (saved))
+            placeEditorWindow (*m_editorWindow, saved);
+        else
+        {
+            m_editorWindow->centreWithSize (m_editorWindow->getWidth(),
+                                            m_editorWindow->getHeight());
+            placeEditorWindow (*m_editorWindow, m_editorWindow->getBounds());
+        }
 
         m_editorWindow->setVisible (true);
         m_editorWindow->toFront (true);
@@ -389,11 +439,14 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
     window->setContentOwned (m_editor.release(), true);
 
     const auto saved = rememberedEditorBounds (m_pluginName);
-    if (! saved.isEmpty())
-        window->setBounds (saved);
+    if (! saved.isEmpty() && isUsableEditorBounds (saved))
+        placeEditorWindow (*window, saved);
     else
+    {
         window->centreWithSize (window->getContentComponent()->getWidth(),
                                 window->getContentComponent()->getHeight());
+        placeEditorWindow (*window, window->getBounds());
+    }
 
     m_editorWindow->setVisible (true);
     m_editorWindow->toFront (true);

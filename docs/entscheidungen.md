@@ -422,3 +422,20 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Wiederherstellung aus `origin/release/v0.1.7-stable` (git init, fetch,
     HEAD/Branches neu), JUCE-Submodule separat nachgezogen. Projektordner
     heisst jetzt `C:\opencode-projekte\Heptachord`.
+
+## Runde 20 (Editor-Fenster und Harmoniestimmen)
+
+92. **Alle vier Stimmen wieder Standard im Standalone** - Der alte Override
+    im Processor-Konstruktor setzte h1/h2/h3.enable beim Start auf 0, obwohl
+    Parameter-Tabelle, Doku und Factory-Presets "an" vorsehen. Damit spielte
+    ein geladenes VST-Instrument (Osirus) nur THRU auf Kanal 1. Der Override
+    ist entfernt; die Parameter-Defaults (true) gelten jetzt auch im
+    Standalone. Multi-Modus bleibt bestehen (Thru=1, H1=2, H2=3, H3=4);
+    das VST erhaelt alle MIDI-Kanaele unverfiltert.
+93. **Editor-Fenster nur bei voller Sichtbarkeit wiederherstellen** - Die
+    Positionsmerkung speicherte jedes Rect mit beliebiger Ueberschneidung
+    der Displays (auch negative Koordinaten) und setzte es ungefrueft
+    zurueck; Surge war danach oben links nicht mehr bedienbar. Gemerkt und
+    wiederhergestellt wird nur noch, wenn das Fenster komplett im
+    `userBounds` eines Displays liegt - sonst zentrieren. Kein File-Persist,
+    kein zusaetzlicher Reset-Knopf.

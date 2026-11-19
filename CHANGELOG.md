@@ -26,6 +26,10 @@ werden damit abgelöst. Der Branch `release/v0.1.7-stable` enthält diesen Stand
   Fenster merkt Größe/Position, der EDITOR-Knopf zeigt den Offen-Zustand.
 - GUI-Zoom in fünf Stufen (100/125/150/175/200 %) über einen eigenen
   Inhalts-Container: Layout bleibt konstant, Editor-Fenster wächst linear.
+- Alle vier Stimmen (Thru, H1–H3) wieder standardmäßig aktiv; geladene
+  VST-Instrumente erhalten MIDI auf Kanal 1–4 (vorerst nur THRU war hörbar).
+- Editor-Fenster: Position nur bei voller Sichtbarkeit gemerkt; zu große
+  Fenster (z. B. Surge XT) werden mit erreichbarer Titelzeile platziert.
 - Prüfung: 150 Testfälle / 15757 Assertions, `ctest --preset ninja` 100 %,
   VST-Auto-Tests der sechs zuvor crashenden Instrumente mit `exit=0`.
 

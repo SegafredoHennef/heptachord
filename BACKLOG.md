@@ -60,4 +60,6 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 - [x] Export-Buttons vergroessert
 - [x] Richtung/Rate/Output ComboBoxes befuellt
 - [x] Fokus auf Step 1 beim Start
-- [x] h1/h2/h3 standardmaessig ausgeschaltet (nur Standalone)
+- [x] h1/h2/h3 wieder standardmaessig aktiv (Entscheidung 92): der alte
+      Standalone-Override schaltete sie aus und liess VST-Instrumente wie
+      Osirus nur THRU spielen; ersetzt durch die Parameter-Defaults (an)
