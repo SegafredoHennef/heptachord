@@ -44,8 +44,15 @@ _Avoid_: Mode, Tonart, Temperament
 **Zyklus**:
 Ein vollstaendiger Durchlauf aller aktiven Steps in der gewaehlten Richtung
 (Vorwaerts, Rueckwaerts, PingPong, Zufall) — die Einheit, die der MIDI-Export
-als eine Datei festhaelt (Entscheidung 84).
+als eine Datei festhaelt (Entscheidung 84) und nach der eine Aufnahme gezaehlt
+wird. Nicht mit einem musikalischen Takt gleichzusetzen.
 _Avoid_: Takt, Loop, Pattern
+
+**Aufnahme**:
+Der mitgeschnittene Ablauf der vier Stimmen ueber einen oder mehrere Zyklen;
+die Einheit, die als MIDI-Datei gespeichert wird. Mehrere Zyklen gehoeren zu
+einer Aufnahme, nicht zu mehreren Patterns.
+_Avoid_: Take, Recording, Stepsequenz
 
 **Bezeichnungsmodus**:
 Die Anzeige-Konvention für Noten- und Skalennamen: Deutsch (C, Cis, …, Ais, H;

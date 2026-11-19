@@ -54,4 +54,28 @@ struct RenderOptions
 // sortiert, damit der MIDI-Schreiber sie direkt uebernehmen kann.
 std::vector<RenderedNote> renderCycle (const RenderOptions& options) noexcept;
 
+// Position innerhalb einer Aufnahme, abgeleitet aus der Anzahl vergangener
+// Step-Slots (ein Zyklus = activeCount Slots, richtungsunabhängig). Beide
+// Werte sind 1-basiert; 0 Slots bedeuten Zyklus 1, Step 1.
+struct CyclePosition
+{
+    int cycle = 0;       // 1, 2, ...
+    int step = 0;        // 1 .. stepsPerCycle
+};
+
+inline CyclePosition cyclePosition (int slots, int stepsPerCycle) noexcept
+{
+    if (slots < 0 || stepsPerCycle <= 0)
+        return {};
+
+    return { slots / stepsPerCycle + 1, slots % stepsPerCycle + 1 };
+}
+
+// True, wenn die gewuenschte Anzahl Zyklen vollständig vergangen ist.
+// target <= 0 bedeutet unbegrenzt (nie automatisch erreichen).
+inline bool recordingTargetReached (int slots, int stepsPerCycle, int target) noexcept
+{
+    return stepsPerCycle > 0 && target > 0 && slots >= target * stepsPerCycle;
+}
+
 } // namespace heptachord::midirender

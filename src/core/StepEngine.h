@@ -65,6 +65,8 @@ public:
 
     const NoteTracker& noteTracker() const noexcept { return m_notes; }
     std::int64_t nextSlotIndex() const noexcept { return m_nextSlot; }
+    // Anzahl der Steps, aus denen ein Zyklus besteht (inkl. Rest-Steps).
+    int activeStepCount() const noexcept { return m_sequencer.activeCount(); }
     int currentStepIndex() const noexcept { return m_currentStep; }
     bool isRunning() const noexcept { return m_wasPlaying; }
 

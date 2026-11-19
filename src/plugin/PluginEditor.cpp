@@ -113,68 +113,62 @@ Editor::Editor (Processor& processorToEdit)
         notesButton.onClick = [this] { exportNotes(); };
         addAndMakeVisible (notesButton);
 
-        recButton.setTooltip ("Aufnahme starten/stoppen (quantisiert auf Step-Grenze)");
-        recButton.onClick = [this] { if (processor.isRecording()) processor.stopRecording(); else processor.startRecording(); updateRecorderButtons(); };
+        recButton.setTooltip ("Aufnahme an der naechsten Step-Grenze starten (ersetzt den vorherigen Take)");
+        recButton.onClick = [this]
+        {
+            if (processor.isRecording() || processor.isRecordingArmed())
+                processor.stopRecording();
+            else
+                processor.startRecording();
+            updateRecorderButtons();
+        };
         addAndMakeVisible (recButton);
 
-        playButton.setTooltip ("Aufnahme abspielen");
+        playButton.setTooltip ("Aufnahme abspielen (ohne Engine-Noten)");
         playButton.onClick = [this] { if (processor.isPlaying()) processor.stopPlayback(); else processor.startPlayback(); updateRecorderButtons(); };
         addAndMakeVisible (playButton);
 
-        stopButton.setTooltip ("Aufnahme und Wiedergabe stoppen");
-        stopButton.onClick = [this] {
-            const bool wasRecording = processor.isRecording();
+        stopButton.setTooltip ("Aufnahme oder Wiedergabe stoppen");
+        stopButton.onClick = [this]
+        {
             processor.stopRecording();
             processor.stopPlayback();
             updateRecorderButtons();
-
-            // Nach dem Stoppen der Aufnahme: Speichern-Dialog anbieten.
-            if (wasRecording && processor.hasRecording())
-            {
-                auto chooser = std::make_shared<juce::FileChooser> (
-                    "Aufnahme speichern",
-                    juce::File::getSpecialLocation (juce::File::userDesktopDirectory).getChildFile ("Heptachord_Recording.mid"),
-                    "*.mid");
-
-                chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-                    [this, chooser] (const juce::FileChooser& fc)
-                    {
-                        auto file = fc.getResult();
-                        if (file != juce::File {})
-                        {
-                            if (! file.hasFileExtension (".mid"))
-                                file = file.withFileExtension (".mid");
-                            if (! processor.saveRecordingToFile (file))
-                            {
-                                juce::NativeMessageBox::showMessageBoxAsync (
-                                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
-                                    "Die Aufnahme konnte nicht gespeichert werden.", this);
-                            }
-                        }
-                    });
-            }
         };
         addAndMakeVisible (stopButton);
 
         clearButton.setTooltip ("Aufnahme loeschen");
-        clearButton.onClick = [this] { processor.clearRecording(); updateRecorderButtons(); };
+        clearButton.onClick = [this] { processor.clearRecording(); updateRecorderButtons(); updateRecordingStatus(); };
         addAndMakeVisible (clearButton);
 
-        cycleButton.setTooltip ("Genau einen Zyklus aufnehmen (8 Steps)");
-        cycleButton.onClick = [this] { processor.startCycleRecording(); updateRecorderButtons(); };
-        addAndMakeVisible (cycleButton);
+        saveRecordingButton.setTooltip ("Die gesamte Aufnahme (alle Zyklen) als MIDI-Datei speichern");
+        saveRecordingButton.onClick = [this] { saveRecording(); };
+        addAndMakeVisible (saveRecordingButton);
 
-        loopCyclesBox = combos.add (new juce::ComboBox());
-        loopCyclesBox->addItem ("1x", 1);
-        loopCyclesBox->addItem ("2x", 2);
-        loopCyclesBox->addItem ("4x", 4);
-        loopCyclesBox->addItem ("8x", 8);
-        loopCyclesBox->setSelectedItemIndex (0, juce::dontSendNotification);
-        loopCyclesBox->setTooltip ("Loop-Laenge in Zyklen");
-        loopCyclesBox->onChange = [this] { processor.setLoopCycles (loopCyclesBox->getSelectedItemIndex() == 0 ? 1 : loopCyclesBox->getSelectedItemIndex() == 1 ? 2 : loopCyclesBox->getSelectedItemIndex() == 2 ? 4 : 8); updateRecorderButtons(); };
-        addAndMakeVisible (loopCyclesBox);
+        recordingStatusLabel.setFont (juce::FontOptions (12.0f));
+        recordingStatusLabel.setColour (juce::Label::textColourId, HeptachordLookAndFeel::accent());
+        recordingStatusLabel.setJustificationType (juce::Justification::centredRight);
+        addAndMakeVisible (recordingStatusLabel);
+
+        recordingTargetBox = combos.add (new juce::ComboBox());
+        recordingTargetBox->addItem ("Ziel: unbegrenzt", 1);
+        recordingTargetBox->addItem ("Ziel: 1 Zyklus", 2);
+        recordingTargetBox->addItem ("Ziel: 2 Zyklen", 3);
+        recordingTargetBox->addItem ("Ziel: 4 Zyklen", 4);
+        recordingTargetBox->addItem ("Ziel: 8 Zyklen", 5);
+        recordingTargetBox->setSelectedItemIndex (0, juce::dontSendNotification);
+        recordingTargetBox->setTooltip ("Auto-Stop nach dieser Anzahl Zyklen (unbegrenzt = bis STOP)");
+        recordingTargetBox->onChange = [this]
+        {
+            static constexpr int targets[] = { 0, 1, 2, 4, 8 };
+            const int index = recordingTargetBox->getSelectedItemIndex();
+            processor.setRecordingTarget (index >= 0 && index < 5 ? targets[index] : 0);
+            updateRecordingStatus();
+        };
+        addAndMakeVisible (recordingTargetBox);
 
         updateRecorderButtons();
+        updateRecordingStatus();
 
         instrumentBox = combos.add (new juce::ComboBox());
         instrumentBox->setJustificationType (juce::Justification::centredLeft);
@@ -207,6 +201,53 @@ Editor::Editor (Processor& processorToEdit)
     // und zurueck — fuer automatisierte Tests ohne GUI-Bedienung.
     if (standalone)
     {
+        auto requestQuit = []
+        {
+            if (auto* app = juce::JUCEApplication::getInstance())
+                app->quit();
+        };
+
+        // Recorder-Auto-Test: HEPTACHORD_AUTO_RECORDER=<Zielzyklen, 0 = frei>.
+        const auto autoRecorder = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_RECORDER", {});
+
+        if (autoRecorder.isNotEmpty())
+        {
+            const int targetCycles = juce::String (autoRecorder).getIntValue();
+            processor.setRecordingTarget (targetCycles > 0 ? targetCycles : 0);
+
+            juce::Timer::callAfterDelay (500, [this]
+            {
+                processor.startRecording();
+                processor.injectKeyboardNoteOn (60, 100);
+                autoLog ("AUTO: recorder started");
+            });
+
+            juce::Timer::callAfterDelay (5400, [this]
+            {
+                processor.injectKeyboardNoteOff (60);
+            });
+
+            juce::Timer::callAfterDelay (5000, [this]
+            {
+                processor.stopRecording();
+                autoLog ("AUTO: recorder stopped cycle=" + juce::String (processor.recordingCycle())
+                         + " per=" + juce::String (processor.recordingStepsInCycle())
+                         + " target=" + juce::String (processor.recordingTarget()));
+            });
+
+            juce::Timer::callAfterDelay (5500, [this, requestQuit]
+            {
+                const auto file = debugLogFile().getParentDirectory().getChildFile ("recorder_test.mid");
+                file.deleteFile();
+                const bool ok = processor.saveRecordingToFile (file);
+                autoLog ("AUTO: recorder saved=" + juce::String ((int) ok)
+                         + " bytes=" + juce::String ((int) file.getSize()));
+                requestQuit();
+            });
+
+            return;
+        }
+
         const auto autoVstPath = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_VST", {});
 
         if (autoVstPath.isNotEmpty())
@@ -250,10 +291,6 @@ Editor::Editor (Processor& processorToEdit)
                     }
                     autoLog ("AUTO: loaded name=" + processor.instrument()->getName());
                 }
-
-                // Zeit-Ticks: der letzte TICK vor dem Crash datiert ihn.
-                for (int t = 250; t <= 3000; t += 250)
-                    juce::Timer::callAfterDelay (t, [] { autoLog ("TICK"); });
 
                 const bool skipEditor = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_NOEDITOR", {}).isNotEmpty();
                 const bool noSwitch = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_NOSWITCH", {}).isNotEmpty();
@@ -602,7 +639,10 @@ void Editor::timerCallback()
     }
 
     if (standalone)
+    {
         updateRecorderButtons();
+        updateRecordingStatus();
+    }
 }
 
 void Editor::updateTransportButton()
@@ -755,28 +795,99 @@ void Editor::showInstrumentEditor()
 
 void Editor::updateRecorderButtons()
 {
-    recButton.setButtonText (processor.isRecording() ? "REC ●" : "REC");
-    playButton.setButtonText (processor.isPlaying() ? "PLAY ▶" : "PLAY");
+    const bool recording = processor.isRecording();
+    const bool armed = processor.isRecordingArmed();
+    const bool playing = processor.isPlaying();
+    const bool hasRec = processor.hasRecording();
+
+    recButton.setButtonText (recording ? "REC ●" : armed ? "REC …" : "REC");
+    playButton.setButtonText (playing ? "PLAY ▶" : "PLAY");
 
     // Farbliche Rueckmeldung: REC rot bei Aufnahme, PLAY gruen bei Wiedergabe.
     recButton.setColour (juce::TextButton::buttonColourId,
-        processor.isRecording() ? juce::Colour (0xffcc3333) : HeptachordLookAndFeel::panelRaised());
+        recording || armed ? juce::Colour (0xffcc3333) : HeptachordLookAndFeel::panelRaised());
     recButton.setColour (juce::TextButton::buttonOnColourId,
-        processor.isRecording() ? juce::Colour (0xffcc3333) : HeptachordLookAndFeel::accent());
+        recording || armed ? juce::Colour (0xffcc3333) : HeptachordLookAndFeel::accent());
     playButton.setColour (juce::TextButton::buttonColourId,
-        processor.isPlaying() ? juce::Colour (0xff33aa55) : HeptachordLookAndFeel::panelRaised());
+        playing ? juce::Colour (0xff33aa55) : HeptachordLookAndFeel::panelRaised());
     playButton.setColour (juce::TextButton::buttonOnColourId,
-        processor.isPlaying() ? juce::Colour (0xff33aa55) : HeptachordLookAndFeel::accent());
+        playing ? juce::Colour (0xff33aa55) : HeptachordLookAndFeel::accent());
 
-    recButton.setEnabled (true);
-    playButton.setEnabled (processor.hasRecording() || processor.isRecording());
-    stopButton.setEnabled (processor.isRecording() || processor.isPlaying());
-    clearButton.setEnabled (processor.hasRecording());
+    recButton.setEnabled (! playing);
+    playButton.setEnabled (hasRec && ! recording && ! armed);
+    stopButton.setEnabled (recording || armed || playing);
+    clearButton.setEnabled (hasRec || recording || armed);
+    saveRecordingButton.setEnabled (hasRec);
 
     recButton.repaint();
     playButton.repaint();
     stopButton.repaint();
     clearButton.repaint();
+    saveRecordingButton.repaint();
+}
+
+void Editor::updateRecordingStatus()
+{
+    if (! standalone)
+        return;
+
+    juce::String text;
+
+    if (processor.isRecording() || processor.hasRecording())
+    {
+        const int cycle = processor.recordingCycle();
+        const int step = processor.recordingStep();
+        const int per = processor.recordingStepsInCycle();
+        const int target = processor.recordingTarget();
+
+        if (cycle > 0 && per > 0)
+        {
+            // Am Zielpunkt ist der naechste Zyklus gerade begonnen; die
+            // Anzeige bleibt beim erreichten Ziel statt "3/2" zu zeigen.
+            const int shown = target > 0 ? juce::jmin (cycle, target) : cycle;
+            text = "Zyklus " + juce::String (shown);
+            if (target > 0)
+                text += "/" + juce::String (target);
+            text += " · Step " + juce::String (step) + "/" + juce::String (per);
+        }
+    }
+    else if (processor.isRecordingArmed())
+    {
+        text = "REC bereit …";
+    }
+
+    recordingStatusLabel.setText (text, juce::dontSendNotification);
+}
+
+void Editor::saveRecording()
+{
+    if (! processor.hasRecording())
+        return;
+
+    const juce::String stamp = juce::Time::getCurrentTime().formatted ("%Y%m%d_%H%M%S");
+
+    fileChooser = std::make_unique<juce::FileChooser> (
+        "Aufnahme speichern",
+        juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
+            .getChildFile ("Heptachord_Aufnahme_" + stamp + ".mid"),
+        "*.mid");
+
+    fileChooser->launchAsync (
+        juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+        [this] (const juce::FileChooser& chooser)
+        {
+            auto file = chooser.getResult();
+            if (file == juce::File {})
+                return;
+
+            if (! file.hasFileExtension (".mid"))
+                file = file.withFileExtension (".mid");
+
+            if (! processor.saveRecordingToFile (file))
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Die Aufnahme konnte nicht gespeichert werden.", this);
+        });
 }
 
 void Editor::exportNotes()
@@ -1112,22 +1223,23 @@ void Editor::resized()
     layoutVoices (voicesArea);
     layoutSteps (stepsArea);
 
-    // Export-Knoepfe in der Steps-Titelzeile (M1/M2, Decision 84/85).
+    // Export- und Recorder-Knoepfe in der Steps-Titelzeile (M1/M2, ADR 0010).
     if (standalone)
     {
         auto titleRight = stepsArea.reduced (kPanelPadding, 3)
                               .removeFromTop (kZoneTitleHeight)
-                              .removeFromRight (560);
+                              .removeFromRight (850);
         exportButton.setBounds (titleRight.removeFromLeft (72).reduced (0, 1));
         dragButton.setBounds (titleRight.removeFromLeft (70).reduced (0, 1));
         wavButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
         notesButton.setBounds (titleRight.removeFromLeft (60).reduced (0, 1));
+        recordingStatusLabel.setBounds (titleRight.removeFromLeft (155).reduced (0, 1));
         recButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
         playButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
         stopButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
         clearButton.setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
-        cycleButton.setBounds (titleRight.removeFromLeft (40).reduced (0, 0));
-        loopCyclesBox->setBounds (titleRight.removeFromLeft (52).reduced (0, 0));
+        saveRecordingButton.setBounds (titleRight.removeFromLeft (80).reduced (0, 1));
+        recordingTargetBox->setBounds (titleRight.removeFromLeft (130).reduced (0, 0));
     }
 
     for (const auto& entry : controlCaptions)

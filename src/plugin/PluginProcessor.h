@@ -16,6 +16,8 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <set>
+#include <utility>
 
 namespace heptachord
 {
@@ -109,32 +111,39 @@ public:
         bool noteOn = true;
     };
 
-    // Rekorder-Steuerung (audio-thread-sicher ueber Atomics).
+    // Rekorder-Steuerung (audio-thread-sicher ueber Atomics/Mutex).
     void startRecording() noexcept;
     void stopRecording() noexcept;
     void startPlayback() noexcept;
     void stopPlayback() noexcept;
     void clearRecording() noexcept;
 
-    // Aufnahme eines einzelnen Zyklus (8 aktive Steps), dann automatisch stoppen.
-    void startCycleRecording() noexcept;
-
-    // Loop-Laenge in Zyklen (1, 2, 4, 8).
-    void setLoopCycles (int cycles) noexcept;
-    int getLoopCycles() const noexcept { return m_loopCycles.load (std::memory_order_relaxed); }
+    // Ziel der Aufnahme in Zyklen: 0 = unbegrenzt (bis STOP), sonst 1/2/4/8.
+    void setRecordingTarget (int cycles) noexcept;
+    int recordingTarget() const noexcept { return m_recordingTarget.load (std::memory_order_relaxed); }
 
     bool isRecording() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 1; }
+    bool isRecordingArmed() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 3; }
     bool isPlaying() const noexcept { return m_recorderState.load (std::memory_order_relaxed) == 2; }
-    bool hasRecording() const noexcept { return ! m_recording.empty(); }
+    bool hasRecording() const noexcept { return m_hasRecording.load (std::memory_order_relaxed); }
     std::int64_t recordingLengthTicks() const noexcept { return m_recordingLength.load (std::memory_order_relaxed); }
 
-    // Aufnahme als Standard-MIDI-Datei speichern (alle aufgenommenen Events).
+    // Fortschritt der laufenden Aufnahme (1-basiert; 0 = keine Aufnahme).
+    int recordingCycle() const noexcept;
+    int recordingStepsInCycle() const noexcept { return m_stepsPerCycle.load (std::memory_order_relaxed); }
+    int recordingStep() const noexcept;
+
+    // Aufnahme als Standard-MIDI-Datei speichern (alle Zyklen, Tick 0 = erste Note).
     bool saveRecordingToFile (const juce::File& file);
 
     juce::AudioProcessorValueTreeState apvts;
 
 private:
     HostTimeline buildTimeline (int numSamples) noexcept;
+
+    // Laufende Aufnahme abschliessen: offene Noten mit Note-Off versehen,
+    // Laenge setzen. Muss mit gehaltenem m_recordingMutex aufgerufen werden.
+    void finalizeRecordingLocked() noexcept;
 
     // MIDI-Clock-Eingang schliessen (Destruktor, releaseResources).
     void closeClockInput() noexcept;
@@ -148,18 +157,21 @@ private:
     std::atomic<int> m_lastInputNote { 0 };    // 0 = noch keine Note gespielt
     std::atomic<int> m_currentStepIndex { -1 }; // aktuell abgespielter Step (0..7), -1 = keiner
 
-    // MIDI-Rekorder (Standalone).
-    std::atomic<int> m_recorderState { 0 };   // 0=idle, 1=recording, 2=playing
+    // MIDI-Rekorder (Standalone): ein Take ueber einen oder mehrere Zyklen.
+    std::atomic<int> m_recorderState { 0 };   // 0=idle, 3=armed, 1=recording, 2=playing
     std::vector<RecordedMidiEvent> m_recording;
+    std::set<std::pair<int, int>> m_activeNotes;  // (Kanal, Pitch) fuer Abschluss-Offs
     std::mutex m_recordingMutex;
+    std::atomic<bool> m_hasRecording { false };
     std::int64_t m_recordingStartTick = 0;
-    std::int64_t m_playbackTick = 0;
+    std::atomic<std::int64_t> m_playbackStartTick { -1 };  // -1 = steht am Blockanfang
     std::atomic<std::int64_t> m_recordingLength { 0 };
-    std::atomic<int> m_loopCycles { 1 };       // 1, 2, 4, 8
-    std::atomic<bool> m_cycleRecording { false }; // true = auto-stop nach 1 Zyklus
-    int m_recordingStartStep = -1;             // Step bei Aufnahme-Start (fuer Zyklus-Erkennung)
-    int m_stepsRecorded = 0;                   // Anzahl aufgenommener Steps (fuer 1x-Modus)
-    int m_lastRecordedStep = -1;               // letzter aufgenommener Step
+    std::atomic<int> m_recordingTarget { 0 };  // 0 = unbegrenzt, sonst 1/2/4/8
+    std::atomic<std::int64_t> m_armSlot { -1 };        // REC: Warten auf Step-Grenze
+    std::int64_t m_recordStartSlot = 0;                // Slot bei Aufnahme-Beginn
+    std::atomic<std::int64_t> m_lastSlotIndex { -1 };  // letzter beobachteter Slot
+    std::atomic<int> m_recordedSlots { 0 };    // vergangene Step-Slots seit Beginn
+    std::atomic<int> m_stepsPerCycle { 0 };    // activeCount bei Aufnahme-Beginn
     double m_standalonePpq = 0.0;
 
     juce::MidiBuffer m_keyboardMidi;

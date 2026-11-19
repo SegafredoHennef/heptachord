@@ -56,6 +56,15 @@ einer Oktave, Y oder Z = Oktave runter, X = Oktave rauf, Leertaste =
 Transport), alternativ über MIDI-Eingabe. Leertaste oder der Knopf startet und
 stoppt den internen Transport (120 BPM).
 
+**Aufnahme (Standalone):** REC startet an der nächsten Step-Grenze (der
+Transport läuft bei Bedarf automatisch an); das Zielfeld begrenzt die Aufnahme
+auf 1/2/4/8 Zyklen oder lässt sie unbegrenzt bis STOP laufen. Die Anzeige zeigt
+live `Zyklus n · Step m/8`. STOP beendet die Aufnahme, SPEICHERN schreibt alle
+Zyklen als MIDI-Datei (erste Note bei Tick 0, keine hängenden Noten). PLAY
+spielt nur die Aufnahme ohne die Engine-Stimmen. Die Knöpfe EXPORT, DRAG, WAV
+und NOTEN erzeugen weiterhin genau einen Zyklus aus den aktuellen Parametern
+(ADR 0010).
+
 ## Download
 
 Aktuelle Version: **v0.1.4** (`Heptachord-0.1.4-win.zip`, SHA-256 steht im

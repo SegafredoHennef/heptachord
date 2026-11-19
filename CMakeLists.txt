@@ -117,6 +117,7 @@ add_executable(heptachord_tests
     tests/test_midirender.cpp
     tests/test_midiexport.cpp
     tests/test_audioexport.cpp
+    tests/test_recorder.cpp
     src/plugin/ProcessorBridge.cpp
     src/plugin/TestSynth.cpp
     src/plugin/Preset.cpp

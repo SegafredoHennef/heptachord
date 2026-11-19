@@ -23,6 +23,10 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Erledigt
 
+- [x] Aufnahme ueber mehrere Zyklen als Take: slotbasierte Zykluszaehlung,
+      Zielwahl 1/2/4/8/unbegrenzt, Live-Anzeige Zyklus/Step, eigener
+      SPEICHERN-Knopf (alle Zyklen, Tick 0, Abschluss-Offs), PLAY isoliert;
+      Catch2-Tests + Recorder-Auto-Test (ADR 0010, Entscheidung 89)
 - [x] VST3 Multi-Bus-Scratchpuffer + sicherer Instrumentwechsel (Mutex/prepare vor Veroeffentlichung):
       Osirus, OsTIrus, Vavra, Xenia, NodalRed2x, FabFilter Pro-Q 4 im Auto-Test stabil
       (Laden, Editor open/close/reopen, Wechsel, Noten), vgl. ADR 0008

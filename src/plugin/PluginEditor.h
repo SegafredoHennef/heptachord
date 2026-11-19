@@ -190,7 +190,9 @@ private:
     void dragMidi();
     void exportWav();
     void exportNotes();
+    void saveRecording();
     void updateRecorderButtons();
+    void updateRecordingStatus();
     void loadInstrument();
     // Laedt eine VST3-Datei und setzt sie als aktives Instrument (true=ok).
     bool loadInstrumentFromFile (const juce::File& file);
@@ -205,8 +207,9 @@ private:
     juce::TextButton playButton { "PLAY" };
     juce::TextButton stopButton { "STOP" };
     juce::TextButton clearButton { "CLEAR" };
-    juce::TextButton cycleButton { "1x" };
-    juce::ComboBox* loopCyclesBox = nullptr;
+    juce::TextButton saveRecordingButton { "SPEICHERN" };
+    juce::Label recordingStatusLabel;
+    juce::ComboBox* recordingTargetBox = nullptr;
     juce::ComboBox* instrumentBox = nullptr;
     juce::TextButton loadButton { "LADEN..." };
     juce::TextButton editButton { "EDITOR" };

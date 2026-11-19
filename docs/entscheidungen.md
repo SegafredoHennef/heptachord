@@ -391,3 +391,18 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Felder wie der Header (vorher fehlte Step). Die MIDI-Datei nutzt den
     bewaehrten MidiExport-Pfad; Tests in tests/test_midirender.cpp pruefen
     Step-Bereich, die Steps 1/5 und die Off-zu-On-Zuordnung.
+
+## Runde 18 (Mehrere Zyklen aufnehmen und speichern)
+
+89. **Aufnahme als Take statt Muster (ADR 0010)** - Der Recorder zaehlt
+    Zyklen slotbasiert ueber `StepEngine::nextSlotIndex()` (ein Zyklus =
+    `activeCount` Step-Slots, richtungsunabhaengig), startet an der naechsten
+    Step-Grenze und ersetzt bei neuem REC den alten Take. Zielwahl
+    unbegrenzt/1/2/4/8 mit Auto-Stop, Live-Anzeige `Zyklus n · Step m/8`
+    direkt bei den Recorder-Knoepfen. Der neue SPEICHERN-Knopf schreibt alle
+    Zyklen als MIDI (SMF 1, PPQ 480, vier Spuren, Tick 0 = erste Note,
+    Abschluss-Offs fuer haengende Noten); STOP speichert nicht mehr
+    automatisch. PLAY spielt nur die Aufnahme (Engine stumm, Start bei
+    Tick 0). EXPORT/DRAG/WAV/NOTEN bleiben Ein-Zyklus-Exporte aus Parametern
+    und sagen das kuenftig im Tooltip; damit ist der Datenverlust behoben,
+    dass beim Speichern nur die ersten Steps landeten. Glossar: Zyklus/Aufnahme.

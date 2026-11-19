@@ -3,6 +3,8 @@
 #include "plugin/ParameterLayout.h"
 #include "plugin/PluginEditor.h"
 
+#include <algorithm>
+
 namespace heptachord
 {
 namespace
@@ -228,86 +230,129 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
             static_cast<double> (buffer.getNumSamples()) * bpm * midirender::kPpq / (60.0 * sampleRate));
 
         const int state = m_recorderState.load (std::memory_order_relaxed);
+        const std::int64_t slotIndex = m_bridge.engine().nextSlotIndex();
 
-        // Aufnahme: Output-Events einfangen.
-        if (state == 1)
+        // Aufnahme erst an der naechsten Step-Grenze aktivieren (Q2 Runde 3).
+        if (state == 3)
         {
-            const int currentStep = m_currentStepIndex.load (std::memory_order_relaxed);
-
-            // Start-Step beim ersten Block merken.
-            if (m_recordingStartStep < 0 && currentStep >= 0)
-                m_recordingStartStep = currentStep;
-
-            const std::lock_guard<std::mutex> lock (m_recordingMutex);
-            for (const auto metadata : midiMessages)
+            if (m_armSlot.load (std::memory_order_relaxed) < 0)
+                m_armSlot.store (slotIndex, std::memory_order_relaxed);
+            else if (slotIndex > m_armSlot.load (std::memory_order_relaxed))
             {
-                const auto msg = metadata.getMessage();
-                if (msg.isNoteOn() || msg.isNoteOff())
-                {
-                    const std::int64_t tick = blockStartTick + static_cast<std::int64_t> (
-                        static_cast<double> (metadata.samplePosition) * bpm * midirender::kPpq / (60.0 * sampleRate));
-                    m_recording.push_back ({ tick, msg.getChannel(), msg.getNoteNumber(),
-                                             msg.isNoteOn() ? msg.getVelocity() : 0, msg.isNoteOn() });
-                }
-            }
-            // Start-Tick beim ersten Event setzen.
-            if (m_recordingStartTick == 0 && ! m_recording.empty())
-                m_recordingStartTick = m_recording.front().tick;
-
-            // Zyklus-Erkennung: wenn der Sequencer zum Start-Step zurueckkehrt
-            // (nach mindestens einem Step), Aufnahme stoppen (nur im 1x-Modus).
-            if (m_cycleRecording.load (std::memory_order_relaxed) && m_recordingStartStep >= 0
-                && currentStep >= 0 && currentStep == m_recordingStartStep && m_stepsRecorded > 0)
-            {
-                m_recorderState.store (0, std::memory_order_relaxed);
-                m_recordingLength.store (m_recording.empty() ? 0 : m_recording.back().tick + 1,
-                                         std::memory_order_relaxed);
-            }
-
-            // Steps zaehlen (fuer 1x-Modus).
-            if (currentStep >= 0 && (m_stepsRecorded == 0 || currentStep != m_lastRecordedStep))
-            {
-                m_stepsRecorded++;
-                m_lastRecordedStep = currentStep;
+                const std::lock_guard<std::mutex> lock (m_recordingMutex);
+                m_recording.clear();
+                m_activeNotes.clear();
+                m_recordingStartTick = 0;
+                m_recordingLength.store (0, std::memory_order_relaxed);
+                m_hasRecording.store (false, std::memory_order_relaxed);
+                m_recordStartSlot = slotIndex;
+                m_lastSlotIndex.store (slotIndex, std::memory_order_relaxed);
+                m_recordedSlots.store (0, std::memory_order_relaxed);
+                m_stepsPerCycle.store (std::max (1, m_bridge.engine().activeStepCount()),
+                                       std::memory_order_relaxed);
+                m_armSlot.store (-1, std::memory_order_relaxed);
+                m_recorderState.store (1, std::memory_order_relaxed);
             }
         }
 
-        // Wiedergabe: aufgenommene Events einspielen.
-        if (state == 2 && ! m_recording.empty())
-        {
-            const std::int64_t recLen = m_recordingLength.load (std::memory_order_relaxed);
-            const std::int64_t baseLen = (recLen > 0) ? recLen : (m_recording.back().tick - m_recordingStartTick + 1);
-            const int cycles = m_loopCycles.load (std::memory_order_relaxed);
-            const std::int64_t loopLen = baseLen * cycles;
+        bool capturing = m_recorderState.load (std::memory_order_relaxed) == 1;
 
-            std::vector<RecordedMidiEvent> toPlay;
+        if (capturing)
+        {
+            // Slotbasierte Zaehlung: richtungsunabhaengig und identisch mit
+            // der Definition eines Zyklus im Export (activeCount Slots).
+            const std::int64_t lastSlot = m_lastSlotIndex.load (std::memory_order_relaxed);
+            if (lastSlot >= 0 && slotIndex > lastSlot)
+            {
+                m_recordedSlots.fetch_add (static_cast<int> (slotIndex - lastSlot),
+                                           std::memory_order_relaxed);
+                m_lastSlotIndex.store (slotIndex, std::memory_order_relaxed);
+            }
+
+            {
+                const std::lock_guard<std::mutex> lock (m_recordingMutex);
+                for (const auto metadata : midiMessages)
+                {
+                    const auto msg = metadata.getMessage();
+                    if (! msg.isNoteOn() && ! msg.isNoteOff())
+                        continue;
+
+                    const std::int64_t tick = blockStartTick + static_cast<std::int64_t> (
+                        static_cast<double> (metadata.samplePosition) * bpm * midirender::kPpq / (60.0 * sampleRate));
+
+                    if (msg.isNoteOn())
+                        m_activeNotes.insert ({ msg.getChannel(), msg.getNoteNumber() });
+                    else
+                        m_activeNotes.erase ({ msg.getChannel(), msg.getNoteNumber() });
+
+                    m_recording.push_back ({ tick, msg.getChannel(), msg.getNoteNumber(),
+                                             msg.isNoteOn() ? msg.getVelocity() : 0, msg.isNoteOn() });
+                }
+
+                if (m_recordingStartTick == 0 && ! m_recording.empty())
+                    m_recordingStartTick = m_recording.front().tick;
+
+                m_hasRecording.store (! m_recording.empty(), std::memory_order_relaxed);
+            }
+
+            const int perCycle = m_stepsPerCycle.load (std::memory_order_relaxed);
+            const int target = m_recordingTarget.load (std::memory_order_relaxed);
+            const int slots = m_recordedSlots.load (std::memory_order_relaxed);
+
+            if (midirender::recordingTargetReached (slots, perCycle, target))
+            {
+                stopRecording();
+                capturing = false;
+            }
+        }
+
+        // Wiedergabe: nur die Aufnahme; die Engine laeuert zwar weiter, ihre
+        // Noten werden aber verworfen (Q6 Runde 3).
+        if (m_recorderState.load (std::memory_order_relaxed) == 2
+            && m_hasRecording.load (std::memory_order_relaxed))
+        {
+            midiMessages.clear();
+
+            std::int64_t firstTick = 0;
+            {
+                const std::lock_guard<std::mutex> lock (m_recordingMutex);
+                if (! m_recording.empty())
+                    firstTick = m_recording.front().tick;
+            }
+
+            std::int64_t playbackStart = m_playbackStartTick.load (std::memory_order_relaxed);
+            if (playbackStart < 0)
+            {
+                playbackStart = blockStartTick;
+                m_playbackStartTick.store (playbackStart, std::memory_order_relaxed);
+            }
+
             {
                 const std::lock_guard<std::mutex> lock (m_recordingMutex);
                 for (const auto& ev : m_recording)
                 {
-                    // Relativer Tick innerhalb der Aufnahme.
-                    std::int64_t relTick = ev.tick - m_recordingStartTick;
-                    // Loop.
-                    if (loopLen > 0)
-                        relTick = relTick % loopLen;
-                    std::int64_t absTick = m_playbackTick + relTick;
-                    // Nur Events in diesem Block.
-                    if (absTick >= blockStartTick && absTick < blockEndTick)
-                    {
-                        int samplePos = static_cast<int> (
-                            (static_cast<double> (absTick - blockStartTick) / (blockEndTick - blockStartTick)) *
-                            static_cast<double> (buffer.getNumSamples()));
-                        samplePos = std::clamp (samplePos, 0, buffer.getNumSamples() - 1);
-                        juce::MidiMessage msg = ev.noteOn
-                            ? juce::MidiMessage::noteOn (ev.channel, ev.pitch, (juce::uint8) ev.velocity)
-                            : juce::MidiMessage::noteOff (ev.channel, ev.pitch);
-                        msg.setTimeStamp (samplePos);
-                        midiMessages.addEvent (msg, samplePos);
-                    }
+                    const std::int64_t absTick = playbackStart + (ev.tick - firstTick);
+                    if (absTick < blockStartTick || absTick >= blockEndTick)
+                        continue;
+
+                    const int samplePos = std::clamp (
+                        static_cast<int> (
+                            static_cast<double> (absTick - blockStartTick) /
+                            static_cast<double> (blockEndTick - blockStartTick) *
+                            static_cast<double> (buffer.getNumSamples())),
+                        0, buffer.getNumSamples() - 1);
+
+                    juce::MidiMessage msg = ev.noteOn
+                        ? juce::MidiMessage::noteOn (ev.channel, ev.pitch, (juce::uint8) ev.velocity)
+                        : juce::MidiMessage::noteOff (ev.channel, ev.pitch);
+                    msg.setTimeStamp (samplePos);
+                    midiMessages.addEvent (msg, samplePos);
                 }
             }
-            // Playback-Tick vorruecken.
-            m_playbackTick += (blockEndTick - blockStartTick);
+
+            const std::int64_t recLen = m_recordingLength.load (std::memory_order_relaxed);
+            if (playbackStart + recLen <= blockEndTick)
+                stopPlayback();
         }
 
         {
@@ -387,58 +432,72 @@ midirender::RenderOptions Processor::exportOptions() const noexcept
 
 // --- MIDI-Rekorder -----------------------------------------------------------
 
-void Processor::startRecording() noexcept
+void Processor::finalizeRecordingLocked() noexcept
 {
-    if (isStandalone())
+    if (! m_recording.empty())
     {
-        const std::lock_guard<std::mutex> lock (m_recordingMutex);
-        // Overdub: wenn bereits eine Aufnahme existiert, nicht loeschen.
-        if (m_recording.empty())
-        {
-            m_recordingStartTick = 0;  // wird im processBlock gesetzt
-            m_recordingStartStep = -1;
-            m_stepsRecorded = 0;
-        }
-        m_cycleRecording.store (false, std::memory_order_relaxed);
-        m_recorderState.store (1, std::memory_order_relaxed);
+        const std::int64_t endTick = m_recording.back().tick + 1;
+
+        // Hängende Noten bekommen ein Note-Off, sonst klingt das gespeicherte
+        // MIDI laenger als das Gehörte (Q3, Runde 3).
+        for (const auto& note : m_activeNotes)
+            m_recording.push_back ({ endTick, note.first, note.second, 0, false });
+
+        m_activeNotes.clear();
+        m_recordingLength.store (m_recording.back().tick + 1, std::memory_order_relaxed);
+        m_hasRecording.store (true, std::memory_order_relaxed);
+    }
+    else
+    {
+        m_recordingLength.store (0, std::memory_order_relaxed);
+        m_hasRecording.store (false, std::memory_order_relaxed);
     }
 }
 
-void Processor::startCycleRecording() noexcept
+void Processor::startRecording() noexcept
 {
-    if (isStandalone())
+    if (! isStandalone())
+        return;
+
     {
         const std::lock_guard<std::mutex> lock (m_recordingMutex);
-        // Overdub: wenn bereits eine Aufnahme existiert, nicht loeschen.
-        if (m_recording.empty())
-        {
-            m_recordingStartTick = 0;
-            m_recordingStartStep = -1;
-            m_stepsRecorded = 0;
-        }
-        m_cycleRecording.store (true, std::memory_order_relaxed);
-        m_recorderState.store (1, std::memory_order_relaxed);
+        m_recording.clear();
+        m_activeNotes.clear();
+        m_recordingStartTick = 0;
+        m_recordingLength.store (0, std::memory_order_relaxed);
+        m_hasRecording.store (false, std::memory_order_relaxed);
     }
+
+    stopPlayback();
+    m_recordedSlots.store (0, std::memory_order_relaxed);
+    m_stepsPerCycle.store (0, std::memory_order_relaxed);
+    m_armSlot.store (-1, std::memory_order_relaxed);
+    m_lastSlotIndex.store (-1, std::memory_order_relaxed);
+
+    // Ohne laufenden Transport gibt es keine Noten zum Aufnehmen.
+    if (! isStandalonePlaying())
+        m_standalonePlaying.store (true, std::memory_order_relaxed);
+
+    m_recorderState.store (3, std::memory_order_relaxed);  // an der Step-Grenze starten
 }
 
 void Processor::stopRecording() noexcept
 {
-    if (isStandalone())
-    {
-        m_recorderState.store (0, std::memory_order_relaxed);
-        const std::lock_guard<std::mutex> lock (m_recordingMutex);
-        m_recordingLength.store (m_recording.empty() ? 0 : m_recording.back().tick + 1,
-                                 std::memory_order_relaxed);
-    }
+    if (! isStandalone())
+        return;
+
+    m_recorderState.store (0, std::memory_order_relaxed);
+    const std::lock_guard<std::mutex> lock (m_recordingMutex);
+    finalizeRecordingLocked();
 }
 
 void Processor::startPlayback() noexcept
 {
-    if (isStandalone() && hasRecording())
-    {
-        m_playbackTick = 0;
-        m_recorderState.store (2, std::memory_order_relaxed);
-    }
+    if (! isStandalone() || ! hasRecording() || isRecording() || isRecordingArmed())
+        return;
+
+    m_playbackStartTick.store (-1, std::memory_order_relaxed);
+    m_recorderState.store (2, std::memory_order_relaxed);
 }
 
 void Processor::stopPlayback() noexcept
@@ -447,10 +506,55 @@ void Processor::stopPlayback() noexcept
         m_recorderState.store (0, std::memory_order_relaxed);
 }
 
+void Processor::clearRecording() noexcept
+{
+    if (! isStandalone())
+        return;
+
+    const std::lock_guard<std::mutex> lock (m_recordingMutex);
+    m_recording.clear();
+    m_activeNotes.clear();
+    m_recordingStartTick = 0;
+    m_recordingLength.store (0, std::memory_order_relaxed);
+    m_hasRecording.store (false, std::memory_order_relaxed);
+    m_recorderState.store (0, std::memory_order_relaxed);
+}
+
+void Processor::setRecordingTarget (int cycles) noexcept
+{
+    if (cycles == 0 || cycles == 1 || cycles == 2 || cycles == 4 || cycles == 8)
+        m_recordingTarget.store (cycles, std::memory_order_relaxed);
+}
+
+int Processor::recordingCycle() const noexcept
+{
+    if (! hasRecording() && ! isRecording())
+        return 0;
+
+    return midirender::cyclePosition (
+               m_recordedSlots.load (std::memory_order_relaxed),
+               m_stepsPerCycle.load (std::memory_order_relaxed)).cycle;
+}
+
+int Processor::recordingStep() const noexcept
+{
+    if (! hasRecording() && ! isRecording())
+        return 0;
+
+    return midirender::cyclePosition (
+               m_recordedSlots.load (std::memory_order_relaxed),
+               m_stepsPerCycle.load (std::memory_order_relaxed)).step;
+}
+
 bool Processor::saveRecordingToFile (const juce::File& file)
 {
-    if (m_recording.empty())
-        return false;
+    std::int64_t firstTick = 0;
+    {
+        const std::lock_guard<std::mutex> lock (m_recordingMutex);
+        if (m_recording.empty())
+            return false;
+        firstTick = m_recording.front().tick;
+    }
 
     juce::FileOutputStream stream (file);
     if (! stream.openedOk())
@@ -483,7 +587,8 @@ bool Processor::saveRecordingToFile (const juce::File& file)
         auto msg = ev.noteOn
             ? juce::MidiMessage::noteOn (ev.channel, ev.pitch, static_cast<juce::uint8> (juce::jlimit (1, 127, ev.velocity)))
             : juce::MidiMessage::noteOff (ev.channel, ev.pitch);
-        msg.setTimeStamp (static_cast<double> (ev.tick));
+        // Keine führende Stille: die erste Note liegt bei Tick 0.
+        msg.setTimeStamp (static_cast<double> (ev.tick - firstTick));
         tracks[static_cast<std::size_t> (trackIndex)].addEvent (msg);
     }
 
@@ -498,23 +603,6 @@ bool Processor::saveRecordingToFile (const juce::File& file)
 
     stream.flush();
     return true;
-}
-
-void Processor::clearRecording() noexcept
-{
-    if (isStandalone())
-    {
-        const std::lock_guard<std::mutex> lock (m_recordingMutex);
-        m_recording.clear();
-        m_recordingLength.store (0, std::memory_order_relaxed);
-        m_recorderState.store (0, std::memory_order_relaxed);
-    }
-}
-
-void Processor::setLoopCycles (int cycles) noexcept
-{
-    if (cycles == 1 || cycles == 2 || cycles == 4 || cycles == 8)
-        m_loopCycles.store (cycles, std::memory_order_relaxed);
 }
 
 void Processor::closeClockInput() noexcept
