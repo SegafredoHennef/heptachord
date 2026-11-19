@@ -13,7 +13,9 @@ juce::StringArray toChoices (const params::Param& p)
 {
     juce::StringArray choices;
     for (int i = 0; i < p.numChoices; ++i)
-        choices.add (juce::String (p.choices[i]));
+        // Choice-Texte sind UTF-8 (z. B. "Vorwärts"); der char*-Konstruktor
+        // von juce::String interpretiert sie als ASCII und verzernt Umlaute.
+        choices.add (juce::String::fromUTF8 (p.choices[i]));
     return choices;
 }
 

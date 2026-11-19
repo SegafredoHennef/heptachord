@@ -157,12 +157,20 @@ Editor::Editor (Processor& processorToEdit)
         playButton.onClick = [this] { if (processor.isPlaying()) processor.stopPlayback(); else processor.startPlayback(); updateRecorderButtons(); };
         m_content.addAndMakeVisible (playButton);
 
-        stopButton.setTooltip ("Aufnahme oder Wiedergabe stoppen");
+        stopButton.setTooltip ("Aufnahme, Wiedergabe und Transport stoppen");
         stopButton.onClick = [this]
         {
             processor.stopRecording();
             processor.stopPlayback();
+
+            // Auch den Transport anhalten - sonst laeuft die Step-Engine
+            // weiter und der STOP-Knopf scheint wirkungslos zu sein.
+            if (processor.isStandalonePlaying())
+                processor.toggleStandaloneTransport();
+
             updateRecorderButtons();
+            updateTransportButton();
+            updateRecordingStatus();
         };
         m_content.addAndMakeVisible (stopButton);
 
@@ -520,7 +528,10 @@ void Editor::buildControls()
     // ComboBox manuell befuellen (AudioParameterChoice-Attachment populated
     // die Items nicht automatisch).
     for (int i = 0; i < 6; ++i)
-        directionBox->addItem (juce::String (params::kChoices3[i]), i + 1);
+        // kChoices3 enthaelt Umlaute ("Vorwärts"/"Rückwärts"): der
+        // juce::String-char*-Konstruktor nimmt ASCII an und wuerde UTF-8
+        // zu "VorwÃ¤rts" verzerren - daher explizit als UTF-8 dekodieren.
+        directionBox->addItem (juce::String::fromUTF8 (params::kChoices3[i]), i + 1);
     directionBox->setSelectedItemIndex (
         static_cast<int> (processor.apvts.getRawParameterValue ("direction")->load ()),
         juce::dontSendNotification);
@@ -868,7 +879,7 @@ void Editor::updateRecorderButtons()
 
     recButton.setEnabled (! playing);
     playButton.setEnabled (hasRec && ! recording && ! armed);
-    stopButton.setEnabled (recording || armed || playing);
+    stopButton.setEnabled (true);  // immer verfuegbar: stoppt auch den Transport
     clearButton.setEnabled (hasRec || recording || armed);
     saveRecordingButton.setEnabled (hasRec);
 
