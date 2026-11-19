@@ -9,6 +9,7 @@
 #include "plugin/PluginProcessor.h"
 
 #include <functional>
+#include <fstream>
 
 namespace heptachord
 {
@@ -187,6 +188,64 @@ Editor::Editor (Processor& processorToEdit)
     // Anzeige-Labels einmal aufbauen (Default ist Deutsch).
     processor.apvts.addParameterListener ("names.mode", this);
     refreshNameLabels();
+
+    // Auto-Test (nur wenn HEPTACHORD_AUTO_VST gesetzt ist): VST3 automatisch
+    // laden, eine Note spielen und danach beenden — fuer automatisierte Tests
+    // ohne GUI-Bedienung.
+    if (standalone)
+    {
+        const auto autoVstPath = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_VST", {});
+
+        if (autoVstPath.isNotEmpty())
+        {
+            juce::Timer::callAfterDelay (1500, [this, autoVstPath]
+            {
+                auto logLine = [] (const char* text)
+                {
+                    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+                    out << text << '\n';
+                };
+
+                auto quitApp = []
+                {
+                    if (auto* app = juce::JUCEApplication::getInstance())
+                        app->quit();
+                };
+
+                auto inst = createVstPluginInstrument();
+                auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
+
+                if (! vstInst->load (juce::File (autoVstPath)))
+                {
+                    logLine ("AUTO: load failed");
+                    quitApp();
+                    return;
+                }
+
+                processor.setInstrument (std::move (inst));
+                logLine ("AUTO: loaded");
+
+                juce::Timer::callAfterDelay (1000, [this]
+                {
+                    processor.injectKeyboardNoteOn (60, 100);
+                    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+                    out << "AUTO: note on\n";
+                });
+
+                juce::Timer::callAfterDelay (4000, [this]
+                {
+                    processor.injectKeyboardNoteOff (60);
+                });
+
+                juce::Timer::callAfterDelay (6500, [this, quitApp]
+                {
+                    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+                    out << "AUTO: done\n";
+                    quitApp();
+                });
+            });
+        }
+    }
 
     setSize (kWindowWidth, kWindowHeight);
 }
