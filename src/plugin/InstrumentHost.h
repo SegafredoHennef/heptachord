@@ -102,4 +102,7 @@ juce::String blockedPluginReason (const juce::File& file);
 // HEPTACHORD_AUTO_VST bzw. HEPTACHORD_VST_DEBUG gesetzt ist.
 juce::File debugLogFile();
 
+// Diagnose: Peak ueber ALLE Plugin-Kanaele aus dem letzten processBlock.
+float vstAllChannelPeak() noexcept;
+
 } // namespace heptachord

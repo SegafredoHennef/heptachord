@@ -384,6 +384,16 @@ void Processor::injectKeyboardNoteOff (int noteNumber)
     m_keyboardMidi.addEvent (juce::MidiMessage::noteOff (1, noteNumber), 0);
 }
 
+void Processor::injectProgramChange (int program)
+{
+    if (! isStandalone())
+        return;
+
+    const std::lock_guard<std::mutex> lock (m_keyboardMutex);
+    m_keyboardMidi.addEvent (
+        juce::MidiMessage::programChange (1, juce::jlimit (0, 127, program)), 0);
+}
+
 void Processor::toggleStandaloneTransport() noexcept
 {
     m_standalonePlaying.store (! isStandalonePlaying(), std::memory_order_relaxed);

@@ -267,6 +267,18 @@ Editor::Editor (Processor& processorToEdit)
 
         if (autoChannels.isNotEmpty() && loadInstrumentFromFile (juce::File (autoChannels)))
         {
+            // Auf Wunsch alle Stimmen auf Kanal 1 legen (Single-Modus), um
+            // zu pruefen, ob ein Plugin nur Kanal 1 hoert.
+            if (juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_CHANNELS_SINGLE", {}).isNotEmpty())
+                processor.apvts.getParameter ("output.mode")->setValueNotifyingHost (1.0f);
+
+            if (juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_CHANNELS_EDITOR", {}).isNotEmpty())
+                showInstrumentEditor();
+
+            const auto programEnv = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_CHANNELS_PROGRAM", {});
+            if (programEnv.isNotEmpty())
+                processor.injectProgramChange (programEnv.getIntValue());
+
             for (std::size_t v = 0; v < 4; ++v)
             {
                 const int delay = 800 + static_cast<int> (v) * 2000;
@@ -284,7 +296,8 @@ Editor::Editor (Processor& processorToEdit)
 
                 juce::Timer::callAfterDelay (delay + 1700, [this]
                 {
-                    autoLog ("CHAN peak=" + juce::String (processor.outputPeak(), 4));
+                    autoLog ("CHAN peak=" + juce::String (processor.outputPeak(), 4)
+                             + " all=" + juce::String (vstAllChannelPeak(), 4));
                     processor.injectKeyboardNoteOff (60);
                 });
             }

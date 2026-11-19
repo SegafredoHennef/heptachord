@@ -83,6 +83,7 @@ public:
     // Eingangspuffer gemischt.
     void injectKeyboardNoteOn (int noteNumber, int velocity);
     void injectKeyboardNoteOff (int noteNumber);
+    void injectProgramChange (int program);
 
     // Preset-Wechsel aus dem Editor: klingende Noten sofort beenden
     // (Spezifikation 8.2/8.3).

@@ -447,3 +447,14 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Routing-Problem, da der Host die Kanaele 1-4 unverfiltert sendet
     (Recorder-MIDI: `{1:18, 2:6, 3:6, 4:6}`). Der Peak-Messer ist nur
     Diagnose, nicht Teil der GUI.
+95. **Release v0.1.7 und Aufraeumung** - `main` auf den finalen Stand
+    (`53144c2`) gesetzt, alter leerer Ordner `heptachord-v014` bleibt nur
+    wegen eines Prozess-Locks. Release-ZIP `Heptachord-0.1.7-win.zip`
+    (5,4 MB, SHA-256 `1A6731BF...A9556`) gebaut und in CHANGELOG/README
+    verankert (ZIP liegt in `release/`, gitignored).
+96. **Osirus-Stille ist pluginseitig** - Zusaetzlich geprueft: Single-Modus
+    (alle Stimmen Kanal 1), geoeffneter Editor, MIDI-Programmwechsel 0 und
+    der Peak ueber **alle 6 Ausgangskanaele** (0.0002 = Stille). Damit ist
+    weder Routing noch Bus-Mapping die Ursache; eine frische Osirus-
+    Instanz produziert keinen Ton. Kein Host-Fix moeglich — Beobachtung
+    bleibt dokumentiert, kein Blocklist-Eintrag (Plugin crasht nicht).

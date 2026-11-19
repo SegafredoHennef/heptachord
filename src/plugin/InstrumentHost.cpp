@@ -66,6 +66,16 @@ juce::String blockedPluginReason (const juce::File& file)
     return {};
 }
 
+namespace
+{
+std::atomic<float> s_allChannelPeak { 0.0f };
+}
+
+float vstAllChannelPeak() noexcept
+{
+    return s_allChannelPeak.load (std::memory_order_relaxed);
+}
+
 juce::File debugLogFile()
 {
     return juce::File::getSpecialLocation (juce::File::tempDirectory)
@@ -178,6 +188,15 @@ void VstPluginInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuff
     }
 
     m_plugin->processBlock (*processBuffer, midiIn);
+
+    // Diagnose: Peak ueber alle Plugin-Kanaele (auch Busse jenseits von 0/1).
+    {
+        float peak = s_allChannelPeak.load (std::memory_order_relaxed);
+        for (int ch = 0; ch < processBuffer->getNumChannels(); ++ch)
+            for (int i = 0; i < processBuffer->getNumSamples(); ++i)
+                peak = std::max (peak, std::abs (processBuffer->getSample (ch, i)));
+        s_allChannelPeak.store (peak, std::memory_order_relaxed);
+    }
 
     if (processBuffer != &buffer)
         for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
