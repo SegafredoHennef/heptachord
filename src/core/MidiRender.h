@@ -22,7 +22,9 @@ inline constexpr int kFallbackNote = 60;  // C4
 inline constexpr int kFallbackVelocity = 100;
 
 // Ein Notenereignis im exportierten Zyklus. tick = absolute Zeit in PPQ
-// (1 Viertel = 480 Ticks); track = 0 Thru, 1..3 H1..H3.
+// (1 Viertel = 480 Ticks); track = 0 Thru, 1..3 H1..H3; step = 1-basierte
+// Step-Nummer (1..8) des ausloesenden Steps. Note-Offs tragen denselben Step
+// wie das zugehoerige Note-On (auch Gate-Enden/Hold-Offs).
 struct RenderedNote
 {
     std::int64_t tick = 0;
@@ -31,6 +33,7 @@ struct RenderedNote
     int channel = 1;     // 1 ... 16
     int track = 0;       // 0 ... 3
     bool noteOn = true;
+    int step = 0;        // 1 ... 8 (0 = unbekannt)
 
     bool operator== (const RenderedNote&) const = default;
 };

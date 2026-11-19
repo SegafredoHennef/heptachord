@@ -376,3 +376,18 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Heptachord_<Grundton>_<Skala>_<Rate>.wav (ASCII). Tests in
     tests/test_audioexport.cpp (gueltiges WAV, Peak > 0, leerer Zyklus,
     Dateiname).
+
+## Runde 17 (NOTEN-Export)
+
+88. **NOTEN-Export: MIDI + Text mit Step-Spalte** - Der NOTEN-Knopf
+    schreibt ueber einen einzigen Speichern-Dialog zwei Dateien mit gemeinsamer
+    Basis (<basis>.mid, <basis>.txt); der Vorschlag come aus
+    MidiExport::suggestedFileName. Der Text bleibt kommasepariert mit
+    Metadaten-Kommentaren, hat aber jetzt eine konsistente
+    `Step,Tick,Channel,Pitch,Velocity,Event`-Spaltenzeile: `step` ist die
+    1-basierte Step-Nummer (1..8) aus dem Core-Render (RenderedNote.step);
+    Note-Offs tragen den Step des zugehoerigen Note-Ons - auch Gate-Enden
+    und Hold-Offs am Zyklusende. Damit hat jede Datenzeile genau so viele
+    Felder wie der Header (vorher fehlte Step). Die MIDI-Datei nutzt den
+    bewaehrten MidiExport-Pfad; Tests in tests/test_midirender.cpp pruefen
+    Step-Bereich, die Steps 1/5 und die Off-zu-On-Zuordnung.

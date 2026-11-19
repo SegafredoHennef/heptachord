@@ -783,47 +783,66 @@ void Editor::exportNotes()
 {
     const auto options = processor.exportOptions();
 
-    juce::String timestamp = juce::Time::getCurrentTime().formatted ("%Y%m%d_%H%M%S");
-    juce::String baseName = "Heptachord_Noten_" + timestamp;
+    // Ein Speichern-Dialog fuer beide Dateien: die gewaehlte Basis ergibt
+    // <basis>.mid und <basis>.txt (NOTEN = MIDI + Text).
+    const juce::String suggested =
+        juce::File (MidiExport::suggestedFileName (options)).getFileNameWithoutExtension() + ".txt";
 
-    juce::File desktop = juce::File::getSpecialLocation (juce::File::userDesktopDirectory);
-    juce::File midiFile = desktop.getChildFile (baseName + ".mid");
-    juce::File txtFile = desktop.getChildFile (baseName + ".txt");
+    fileChooser = std::make_unique<juce::FileChooser> (
+        "Notenfolge als MIDI und Text speichern",
+        juce::File::getSpecialLocation (juce::File::userDesktopDirectory)
+            .getChildFile (suggested),
+        "*.txt");
 
-    if (! MidiExport::saveToFile (midiFile, options))
-    {
-        juce::NativeMessageBox::showMessageBoxAsync (
-            juce::MessageBoxIconType::WarningIcon, "Heptachord",
-            "Die MIDI-Datei konnte nicht gespeichert werden.", this);
-        return;
-    }
+    fileChooser->launchAsync (
+        juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+        [this, options] (const juce::FileChooser& chooser)
+        {
+            const auto file = chooser.getResult();
+            if (file == juce::File {})
+                return;
 
-    const auto notes = midirender::renderCycle (options);
+            const juce::File folder = file.getParentDirectory();
+            const juce::String base = file.getFileNameWithoutExtension();
+            const juce::File midiFile = folder.getChildFile (base + ".mid");
+            const juce::File txtFile = folder.getChildFile (base + ".txt");
 
-    juce::String csv;
-    csv += "# Heptachord - Noten-Export\n";
-    csv += "# BPM: " + juce::String (options.bpm, 1) + ", Rate: "
-         + juce::String (options.settings.rate, 3) + ", Seed: 1\n";
-    csv += "Step,Tick,Channel,Pitch,Velocity,Event\n";
+            if (! MidiExport::saveToFile (midiFile, options))
+            {
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Die MIDI-Datei konnte nicht gespeichert werden.", this);
+                return;
+            }
 
-    for (const auto& note : notes)
-    {
-        csv += juce::String (note.tick) + ","
-             + juce::String (note.channel) + ","
-             + juce::String (note.pitch) + ","
-             + juce::String (note.velocity) + ","
-             + juce::String (note.noteOn ? "On" : "Off") + "\n";
-    }
+            const auto notes = midirender::renderCycle (options);
 
-    if (! txtFile.replaceWithText (csv))
-    {
-        juce::NativeMessageBox::showMessageBoxAsync (
-            juce::MessageBoxIconType::WarningIcon, "Heptachord",
-            "Die Text-Datei konnte nicht gespeichert werden.", this);
-        return;
-    }
+            juce::String csv;
+            csv += "# Heptachord - Noten-Export\n";
+            csv += "# BPM: " + juce::String (options.bpm, 1) + ", Rate: "
+                 + juce::String (options.settings.rate, 3) + ", Seed: 1\n";
+            csv += "Step,Tick,Channel,Pitch,Velocity,Event\n";
 
-    lastExportedFile = midiFile;
+            for (const auto& note : notes)
+            {
+                csv += juce::String (note.step) + ","
+                     + juce::String (note.tick) + ","
+                     + juce::String (note.channel) + ","
+                     + juce::String (note.pitch) + ","
+                     + juce::String (note.velocity) + ","
+                     + juce::String (note.noteOn ? "On" : "Off") + "\n";
+            }
+
+            if (! txtFile.replaceWithText (csv))
+            {
+                juce::NativeMessageBox::showMessageBoxAsync (
+                    juce::MessageBoxIconType::WarningIcon, "Heptachord",
+                    "Die Text-Datei konnte nicht gespeichert werden.", this);
+                return;
+            }
+
+            lastExportedFile = midiFile;
+        });
 }
 
 void Editor::exportWav()

@@ -4,7 +4,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
+#include <tuple>
 #include <vector>
 
 using namespace heptachord;
@@ -39,6 +41,7 @@ TEST_CASE ("Render ist bitgleich bei festem Seed", "[midirender]")
         REQUIRE (first[i].channel == second[i].channel);
         REQUIRE (first[i].track == second[i].track);
         REQUIRE (first[i].noteOn == second[i].noteOn);
+        REQUIRE (first[i].step == second[i].step);
     }
 }
 
@@ -150,6 +153,47 @@ TEST_CASE ("Ein Zyklus enthaelt genau die aktiven Steps einmal", "[midirender]")
     }
     REQUIRE (distinctTicks.size() >= 2);
     REQUIRE (distinctTicks.size() <= 4);  // 2 Step-Kanten + Gate-Enden
+}
+
+TEST_CASE ("RenderedNote traegt den 1-basierten Step; Offs gehoeren zum On", "[midirender]")
+{
+    auto options = baseOptions();
+
+    // Nur Step 1 und Step 5 aktiv (1-basiert: Index 0 und 4).
+    for (int step = 0; step < kNumSteps; ++step)
+        options.settings.steps[static_cast<std::size_t> (step)].active = (step == 0 || step == 4);
+
+    const auto notes = midirender::renderCycle (options);
+    REQUIRE_FALSE (notes.empty());
+
+    using Key = std::tuple<int, int, int>;  // Spur, Tonhoehe, Step
+    std::vector<Key> onKeys;
+
+    for (const auto& note : notes)
+    {
+        REQUIRE (note.step >= 1);
+        REQUIRE (note.step <= kNumSteps);
+        REQUIRE ((note.step == 1 || note.step == 5));
+
+        if (note.noteOn)
+            onKeys.emplace_back (note.track, note.pitch, note.step);
+    }
+
+    REQUIRE_FALSE (onKeys.empty());
+    REQUIRE (std::find_if (onKeys.begin(), onKeys.end(), [] (const Key& key)
+    { return std::get<2> (key) == 1; }) != onKeys.end());
+    REQUIRE (std::find_if (onKeys.begin(), onKeys.end(), [] (const Key& key)
+    { return std::get<2> (key) == 5; }) != onKeys.end());
+
+    // Jedes Off gehoert zu einem On derselben Spur, Tonhoehe und Step.
+    for (const auto& note : notes)
+    {
+        if (note.noteOn)
+            continue;
+
+        const Key key { note.track, note.pitch, note.step };
+        REQUIRE (std::find (onKeys.begin(), onKeys.end(), key) != onKeys.end());
+    }
 }
 
 TEST_CASE ("RenderedNote ist Vergleichbar (fuer Bitgleichheit)", "[midirender]")

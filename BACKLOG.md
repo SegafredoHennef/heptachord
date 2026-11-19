@@ -9,7 +9,8 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 - [ ] "Skala zwei mal auswaehlbar" — klaeren, welche ComboBox entfernt werden soll
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
 - [ ] main-Branch bereinigen (v0.1.5/v0.1.6-Features die crashen entfernen)
-- [ ] Noten-Export testen (MIDI + Text/CSV)
+- [x] NOTEN-Export (MIDI + Text): ein Speichern-Dialog fuer beide Dateien,
+      Text mit konsistenter Step-Spalte (1-basiert, Off gehoert zum On), Tests in test_midirender.cpp
 - [ ] VITAL-Editor-Fenster: Groesse/Position merken, ggf. Schliessen-Button-Feedback
 - [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",

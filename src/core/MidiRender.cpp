@@ -23,6 +23,7 @@ struct VoiceRuntime
     bool active = false;          // Note klingt gerade
     int pitch = 0;
     int channel = 1;
+    int step = 0;                 // ausloesender Step (1-basiert) des Note-Ons
     bool hasGateOff = false;      // geplantes Gate-Ende (kein Hold)
     std::int64_t gateOffTick = 0;
 };
@@ -100,7 +101,8 @@ std::vector<RenderedNote> renderCycle (const RenderOptions& options) noexcept
 
                 if (actions.noteOff[index] && state.active)
                 {
-                    notes.push_back ({ hitTick, state.pitch, 0, state.channel, voice, false });
+                    notes.push_back ({ hitTick, state.pitch, 0, state.channel, voice,
+                                       false, state.step });
                     state.active = false;
                     state.hasGateOff = false;
                 }
@@ -110,11 +112,12 @@ std::vector<RenderedNote> renderCycle (const RenderOptions& options) noexcept
 
                 const auto& trigger = plan.voices[index];
                 notes.push_back ({ hitTick, trigger.pitch, trigger.velocity,
-                                   trigger.channel, voice, true });
+                                   trigger.channel, voice, true, stepIndex + 1 });
 
                 state.active = true;
                 state.pitch = trigger.pitch;
                 state.channel = trigger.channel;
+                state.step = stepIndex + 1;
                 state.hasGateOff = false;
 
                 // Hold-Ketten laufen weiter; Play/Ratchet bekommen ein
@@ -138,12 +141,13 @@ std::vector<RenderedNote> renderCycle (const RenderOptions& options) noexcept
 
         if (state.hasGateOff)
         {
-            notes.push_back ({ state.gateOffTick, state.pitch, 0, state.channel, voice, false });
+            notes.push_back ({ state.gateOffTick, state.pitch, 0, state.channel, voice,
+                               false, state.step });
         }
         else if (state.active)
         {
             notes.push_back ({ std::max (cycleEndTick, std::int64_t { 0 }),
-                               state.pitch, 0, state.channel, voice, false });
+                               state.pitch, 0, state.channel, voice, false, state.step });
         }
     }
 
