@@ -146,6 +146,9 @@ private:
 
     bool standalone = false;
 
+    // VST-Editor (VITAL etc.) sichtbar?
+    bool m_instrumentEditorVisible = false;
+
     // Step-Highlight: aktueller Step (0..7, -1 = keiner) und die Spaltenbereiche.
     int m_highlightedStep = 0;
     std::array<juce::Rectangle<int>, 8> m_stepColumnAreas {};

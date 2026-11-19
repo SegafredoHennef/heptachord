@@ -27,10 +27,6 @@ void TestSynthInstrument::reset()
     m_synth.reset();
 }
 
-void TestSynthInstrument::showEditor (juce::Component* /*parent*/)
-{
-    // Der interne Synth hat kein Editor-Fenster.
-}
 
 // -----------------------------------------------------------------------------
 // VstPluginInstrument
@@ -130,6 +126,16 @@ void VstPluginInstrument::showEditor (juce::Component* parent)
         parent->addChildComponent (m_editor.get());
         m_editor->setVisible (true);
         m_editor->grabKeyboardFocus();
+    }
+}
+
+void VstPluginInstrument::hideEditor()
+{
+    if (m_editor != nullptr)
+    {
+        m_editor->setVisible (false);
+        if (m_editor->getParentComponent() != nullptr)
+            m_editor->getParentComponent()->removeChildComponent (m_editor.get());
     }
 }
 

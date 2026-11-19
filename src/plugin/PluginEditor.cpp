@@ -534,8 +534,27 @@ void Editor::loadInstrument()
 
 void Editor::showInstrumentEditor()
 {
-    if (processor.instrument() != nullptr)
-        processor.instrument()->showEditor (this);
+    if (processor.instrument() == nullptr)
+        return;
+
+    auto* inst = processor.instrument();
+    if (! inst->hasEditor())
+        return;
+
+    // Toggle: wenn Editor sichtbar, schliessen; sonst oeffnen.
+    if (m_instrumentEditorVisible)
+    {
+        inst->hideEditor();
+        m_instrumentEditorVisible = false;
+        editButton.setButtonText ("EDITOR");
+        resized();  // Layout neu berechnen
+    }
+    else
+    {
+        inst->showEditor (this);
+        m_instrumentEditorVisible = true;
+        editButton.setButtonText ("SCHLIESSEN");
+    }
 }
 
 void Editor::updateRecorderButtons()

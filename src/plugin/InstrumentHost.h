@@ -24,6 +24,8 @@ public:
     virtual bool hasEditor() const = 0;
     // Oeffnet das Editor-Fenster (nur wenn hasEditor() true).
     virtual void showEditor (juce::Component* parent) = 0;
+    // Schliesst das Editor-Fenster.
+    virtual void hideEditor() = 0;
 
     // Anzeigename fuer die UI.
     virtual juce::String getName() const = 0;
@@ -41,7 +43,8 @@ public:
     void reset() override;
 
     bool hasEditor() const override { return false; }
-    void showEditor (juce::Component* parent) override;
+    void showEditor (juce::Component* parent) override {}
+    void hideEditor() override {}
     juce::String getName() const override { return "Interner Synth"; }
 
 private:
@@ -66,6 +69,7 @@ public:
 
     bool hasEditor() const override;
     void showEditor (juce::Component* parent) override;
+    void hideEditor() override;
     juce::String getName() const override;
 
 private:
