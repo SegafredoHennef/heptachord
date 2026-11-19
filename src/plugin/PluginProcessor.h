@@ -133,6 +133,10 @@ public:
     int recordingStepsInCycle() const noexcept { return m_stepsPerCycle.load (std::memory_order_relaxed); }
     int recordingStep() const noexcept;
 
+    // Diagnose: Peak des Stereo-Ausgangs seit dem letzten Reset.
+    float outputPeak() const noexcept { return m_outputPeak.load (std::memory_order_relaxed); }
+    void resetOutputPeak() noexcept { m_outputPeak.store (0.0f, std::memory_order_relaxed); }
+
     // Aufnahme als Standard-MIDI-Datei speichern (alle Zyklen, Tick 0 = erste Note).
     bool saveRecordingToFile (const juce::File& file);
 
@@ -173,6 +177,7 @@ private:
     std::atomic<int> m_recordedSlots { 0 };    // vergangene Step-Slots seit Beginn
     std::atomic<int> m_stepsPerCycle { 0 };    // activeCount bei Aufnahme-Beginn
     double m_standalonePpq = 0.0;
+    std::atomic<float> m_outputPeak { 0.0f };
 
     juce::MidiBuffer m_keyboardMidi;
     std::mutex m_keyboardMutex;

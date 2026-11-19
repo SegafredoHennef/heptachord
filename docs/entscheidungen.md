@@ -439,3 +439,11 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     wiederhergestellt wird nur noch, wenn das Fenster komplett im
     `userBounds` eines Displays liegt - sonst zentrieren. Kein File-Persist,
     kein zusaetzlicher Reset-Knopf.
+94. **Kanal-Diagnose (`HEPTACHORD_AUTO_CHANNELS`)** - Es wird nacheinander
+    nur eine Stimme aktiviert und der Stereo-Peak gemessen. Ergebnis:
+    OsTIrus reagiert auf alle vier Kanaele (Peaks 0.55/0.36/0.03/0.01),
+    Surge XT auf 1-3, Vital auf 1/2/4. Osirus liefert in einer frischen
+    Instanz keinen Peak (vermutlich kein Default-Patch); das ist kein
+    Routing-Problem, da der Host die Kanaele 1-4 unverfiltert sendet
+    (Recorder-MIDI: `{1:18, 2:6, 3:6, 4:6}`). Der Peak-Messer ist nur
+    Diagnose, nicht Teil der GUI.

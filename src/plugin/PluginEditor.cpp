@@ -64,6 +64,12 @@ void autoLog (const juce::String& line)
 // Nur fuer den Auto-Test: haelt ein geladenes, aber nicht als Instrument
 // gesetztes VST am Leben (Kontroll-Experiment).
 std::unique_ptr<Instrument> g_autoLoadedOnly;
+
+struct VoiceProbe { const char* name; const char* id; };
+constexpr VoiceProbe kChannelProbes[] = {
+    { "THRU", "thru.enable" }, { "H1", "h1.enable" },
+    { "H2", "h2.enable" }, { "H3", "h3.enable" }
+};
 } // namespace
 
 Editor::Editor (Processor& processorToEdit)
@@ -253,6 +259,46 @@ Editor::Editor (Processor& processorToEdit)
             if (auto* app = juce::JUCEApplication::getInstance())
                 app->quit();
         };
+
+        // Kanal-Diagnose: HEPTACHORD_AUTO_CHANNELS=<VST-Pfad>. Nacheinander
+        // wird nur eine Stimme aktiviert und der Audio-Peak gemessen, um zu
+        // pruefen, ob das Plugin auf Kanal 2/3/4 (H1/H2/H3) reagiert.
+        const auto autoChannels = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_CHANNELS", {});
+
+        if (autoChannels.isNotEmpty() && loadInstrumentFromFile (juce::File (autoChannels)))
+        {
+            for (std::size_t v = 0; v < 4; ++v)
+            {
+                const int delay = 800 + static_cast<int> (v) * 2000;
+
+                juce::Timer::callAfterDelay (delay, [this, v]
+                {
+                    for (const auto& p : kChannelProbes)
+                        processor.apvts.getParameter (p.id)->setValueNotifyingHost (
+                            p.id == kChannelProbes[v].id ? 1.0f : 0.0f);
+
+                    processor.resetOutputPeak();
+                    processor.injectKeyboardNoteOn (60, 100);
+                    autoLog ("CHAN probe " + juce::String (kChannelProbes[v].name));
+                });
+
+                juce::Timer::callAfterDelay (delay + 1700, [this]
+                {
+                    autoLog ("CHAN peak=" + juce::String (processor.outputPeak(), 4));
+                    processor.injectKeyboardNoteOff (60);
+                });
+            }
+
+            juce::Timer::callAfterDelay (800 + 4 * 2000, [this, requestQuit]
+            {
+                for (const auto& id : { "thru.enable", "h1.enable", "h2.enable", "h3.enable" })
+                    processor.apvts.getParameter (id)->setValueNotifyingHost (1.0f);
+                autoLog ("CHAN done");
+                requestQuit();
+            });
+
+            return;
+        }
 
         // Recorder-Auto-Test: HEPTACHORD_AUTO_RECORDER=<Zielzyklen, 0 = frei>.
         const auto autoRecorder = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_RECORDER", {});

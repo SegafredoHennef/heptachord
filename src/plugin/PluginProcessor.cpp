@@ -355,6 +355,13 @@ void Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer
             if (m_instrument != nullptr)
                 m_instrument->process (midiMessages, buffer);
         }
+
+        // Diagnose-Peak des Stereo-Ausgangs (fuer die Kanal-Pruefung).
+        float peak = m_outputPeak.load (std::memory_order_relaxed);
+        for (int ch = 0; ch < std::min (2, buffer.getNumChannels()); ++ch)
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                peak = std::max (peak, std::abs (buffer.getSample (ch, i)));
+        m_outputPeak.store (peak, std::memory_order_relaxed);
     }
 }
 
