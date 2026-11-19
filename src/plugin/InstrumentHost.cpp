@@ -56,13 +56,12 @@ void VstPluginInstrument::prepare (double sampleRate)
 
 void VstPluginInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer)
 {
-    juce::ignoreUnused (midi);
-
     if (m_plugin == nullptr)
         return;
 
-    juce::MidiBuffer midiOut; // Das Plugin schreibt hier ggf. MIDI-Events hinein (ignored)
-    m_plugin->processBlock (buffer, midiOut);
+    // VITAL (und andere VST3s) brauchen die MIDI-Eingabe.
+    juce::MidiBuffer midiIn (midi);
+    m_plugin->processBlock (buffer, midiIn);
 }
 
 void VstPluginInstrument::reset()
@@ -100,6 +99,7 @@ bool VstPluginInstrument::load (const juce::File& file)
     if (m_plugin == nullptr)
         return false;
 
+    m_plugin->prepareToPlay (m_sampleRate, 512);
     m_pluginName = m_plugin->getName();
     return true;
 }
