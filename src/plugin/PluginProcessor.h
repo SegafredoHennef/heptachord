@@ -87,7 +87,9 @@ public:
     void notifyPresetChanged() { m_bridge.requestAllNotesOff(); }
 
     // Instrument auswaehlen (nur Standalone). Uebergibt die ownership.
-    void setInstrument (std::unique_ptr<Instrument> instrument) noexcept { m_instrument = std::move (instrument); }
+    // Instrument tauschen; das neue wird mit der aktuellen Sample-Rate
+    // vorbereitet (sonst haelt ein spaeter geladenes VST3 die Falsche).
+    void setInstrument (std::unique_ptr<Instrument> instrument) noexcept;
 
     // Aktuelles Instrument (nullptr wenn noch keines geladen).
     Instrument* instrument() const noexcept { return m_instrument.get(); }

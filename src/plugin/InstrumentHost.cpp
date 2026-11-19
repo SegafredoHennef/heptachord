@@ -3,6 +3,9 @@
 #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include <cmath>
+#include <fstream>
+
 namespace heptachord
 {
 
@@ -57,7 +60,35 @@ void VstPluginInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuff
 
     // VITAL (und andere VST3s) brauchen die MIDI-Eingabe.
     juce::MidiBuffer midiIn (midi);
+
+    float peakBefore = 0.0f;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            peakBefore = std::max (peakBefore, std::abs (buffer.getSample (ch, i)));
+
     m_plugin->processBlock (buffer, midiIn);
+
+    float peakAfter = 0.0f;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            peakAfter = std::max (peakAfter, std::abs (buffer.getSample (ch, i)));
+
+    // Debug: erste 3 Bloecke immer, dann nur bei MIDI oder Audio.
+    static int blockCount = 0;
+    static int logCount = 0;
+    ++blockCount;
+    if (logCount < 40 && (logCount < 3 || midi.getNumEvents() > 0 || peakAfter > 0.0001f))
+    {
+        std::ofstream dbg ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+        dbg << "block=" << blockCount << " midiIn=" << midi.getNumEvents()
+            << " peakBefore=" << peakBefore << " peakAfter=" << peakAfter
+            << " sr=" << m_plugin->getSampleRate()
+            << " bs=" << m_plugin->getBlockSize()
+            << " outCh=" << m_plugin->getTotalNumOutputChannels()
+            << " channels=" << buffer.getNumChannels()
+            << " samples=" << buffer.getNumSamples() << '\n';
+        logCount++;
+    }
 }
 
 void VstPluginInstrument::reset()
@@ -95,8 +126,41 @@ bool VstPluginInstrument::load (const juce::File& file)
     if (m_plugin == nullptr)
         return false;
 
+    // Ausgabe-Bus aktivieren: VITAL meldet seinen Main-Out nicht als
+    // kDefaultActive, JUCE legt den Bus dadurch deaktiviert an (0 Kanaele)
+    // und das Plugin bleibt still. Stereo explizit anfordern.
+    bool busesLayoutOk = true;
+    {
+        auto layout = m_plugin->getBusesLayout();
+
+        if (layout.outputBuses.isEmpty())
+        {
+            busesLayoutOk = false;
+        }
+        else
+        {
+            if (layout.outputBuses[0].isDisabled() || layout.outputBuses[0].size() == 0)
+                layout.outputBuses.set (0, juce::AudioChannelSet::stereo());
+
+            busesLayoutOk = m_plugin->setBusesLayout (layout);
+        }
+    }
+
     m_plugin->prepareToPlay (m_sampleRate, 512);
     m_pluginName = m_plugin->getName();
+
+    // Debug: Zustand nach der Aktivierung.
+    {
+        std::ofstream dbg ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+        dbg << "LOAD " << m_pluginName
+            << " reqRate=" << m_sampleRate
+            << " sr=" << m_plugin->getSampleRate()
+            << " bs=" << m_plugin->getBlockSize()
+            << " outCh=" << m_plugin->getTotalNumOutputChannels()
+            << " outBuses=" << m_plugin->getBusCount (false)
+            << " inBuses=" << m_plugin->getBusCount (true)
+            << " layoutOk=" << (busesLayoutOk ? 1 : 0) << '\n';
+    }
     return true;
 }
 

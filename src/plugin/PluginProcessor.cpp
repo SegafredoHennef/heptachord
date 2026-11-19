@@ -57,6 +57,20 @@ void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerB
     }
 }
 
+void Processor::setInstrument (std::unique_ptr<Instrument> instrument) noexcept
+{
+    if (m_instrument != nullptr)
+        m_instrument->reset();  // alte Noten sofort stoppen
+
+    m_instrument = std::move (instrument);
+
+    if (m_instrument != nullptr)
+    {
+        const double sr = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
+        m_instrument->prepare (sr);
+    }
+}
+
 void Processor::releaseResources()
 {
     closeClockInput();
