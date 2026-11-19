@@ -1326,7 +1326,11 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
 {
     auto buttons = area;
 
+    // Von rechts: RESET, ZOOM, START/STOP, Bezeichnung, Preset. Der Zoom
+    // steht damit direkt rechts neben dem Transport-Knopf und ueberdeckt
+    // nicht den Untertitel ("Clock ...") im linken Header-Bereich.
     resetButton.setBounds (buttons.removeFromRight (84).reduced (2, 6));
+    zoomBox->setBounds (buttons.removeFromRight (110).reduced (2, 6));
 
     if (standalone)
         transportButton.setBounds (buttons.removeFromRight (112).reduced (2, 6));
@@ -1334,7 +1338,6 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     // Bezeichnungsmodus links neben dem Preset-Selektor (Decision 83).
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
-    zoomBox->setBounds (buttons.removeFromRight (110).reduced (2, 6));
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)
