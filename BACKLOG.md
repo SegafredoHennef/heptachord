@@ -4,15 +4,9 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Offen
 
-- [x] GUI-Zoom (100/125/150/175/200 %) — Inhalts-Container mit Transform;
-      Editor-Groesse waechst linear, alle Controls bleiben im sichtbaren Bereich
-      (per UI Automation bei 100–200 % geprueft, Entscheidung 90)
-- [x] INSTRUMENT-Panel im Global-Bereich (aus v0.1.6) portiert
 - [ ] "Skala zwei mal auswaehlbar" — klaeren, welche ComboBox entfernt werden soll
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
 - [ ] main-Branch bereinigen (v0.1.5/v0.1.6-Features die crashen entfernen)
-- [x] VST-Editor-Fenster: Groesse/Position pro Plugin in der Sitzung merken,
-      EDITOR-Knopf als Toggle mit Offen-Zustand (Farbe/Text)
 - [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
   kein Sound trotz Instrument: DX7 V, Analog Lab 3, SongEngine, OB-Xd 3 (evtl. kein Default-Patch
@@ -24,6 +18,9 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Erledigt
 
+- [x] GUI-Zoom (100/125/150/175/200 %) — Inhalts-Container mit Transform;
+      Editor-Groesse waechst linear, alle Controls bleiben im sichtbaren Bereich
+      (per UI Automation bei 100–200 % geprueft, Entscheidung 90)
 - [x] INSTRUMENT-Panel im Global-Bereich (Port aus v0.1.6), Editor-Fenster
       merkt Groesse/Position, EDITOR-Knopf als Toggle mit Rueckmeldung
 - [x] Release-Doku CHANGELOG/README auf v0.1.7 nachgezogen; stabiler Stand
@@ -63,3 +60,6 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 - [x] h1/h2/h3 wieder standardmaessig aktiv (Entscheidung 92): der alte
       Standalone-Override schaltete sie aus und liess VST-Instrumente wie
       Osirus nur THRU spielen; ersetzt durch die Parameter-Defaults (an)
+- [x] Kanal-Diagnose HEPTACHORD_AUTO_CHANNELS: OsTIrus reagiert auf Kanaele
+      1-4, Osirus frisch ohne Patch still; Host sendet alle 4 Kanaele
+      (Entscheidung 94)
