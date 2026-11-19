@@ -11,8 +11,12 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
       `origin/main` bewusst unveraendert
 - [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
-  kein Sound trotz Instrument: DX7 V, Analog Lab 3, SongEngine, OB-Xd 3 (evtl. kein Default-Patch
-  oder zu lange Ladezeit — Auto-Test-Timing pruefen)
+  SongEngine (kein Sound) noch offen.
+  Geprueft (Kanal-Probe, Peak ueber alle Ausgangskanaele): **DX7 V und OB-Xd 3
+  spielen auf allen vier Kanaelen** (Peaks 0.37/0.23/0.13/0.12 bzw.
+  0.19/0.19/0.18/0.18) — kein Host-Problem. **Analog Lab 3 bleibt auch mit
+  geoeffnetem Editor und Programmwechsel 0 stumm** (0.0000) — pluginseitig,
+  vermutlich kein Default-Patch; gleicher Befund wie bei Osirus.
 - [ ] Effekt-VSTs (ValhallaSupermassive, Wider, Inner Pitch, LANDR Mastering/Stems, Fracture)
   bringen als Instrument keinen Sound — erwartet; nur relevant, wenn Effekt-Support gewuenscht
 - [ ] Reason Rack Plugin.vst3: Blocklist entfernen, sobald ein Hersteller-Update den pluginseitigen
