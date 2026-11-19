@@ -60,7 +60,10 @@ void Processor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerB
 void Processor::setInstrument (std::unique_ptr<Instrument> instrument) noexcept
 {
     if (m_instrument != nullptr)
-        m_instrument->reset();  // alte Noten sofort stoppen
+    {
+        m_instrument->hideEditor();  // offenes Plugin-Fenster schliessen
+        m_instrument->reset();       // alte Noten sofort stoppen
+    }
 
     m_instrument = std::move (instrument);
 

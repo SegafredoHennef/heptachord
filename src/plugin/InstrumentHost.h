@@ -27,6 +27,9 @@ public:
     // Schliesst das Editor-Fenster.
     virtual void hideEditor() = 0;
 
+    // Gibt true zurueck, wenn das Editor-Fenster gerade sichtbar ist.
+    virtual bool isEditorOpen() const { return false; }
+
     // Anzeigename fuer die UI.
     virtual juce::String getName() const = 0;
 };
@@ -70,6 +73,7 @@ public:
     bool hasEditor() const override;
     void showEditor (juce::Component* parent) override;
     void hideEditor() override;
+    bool isEditorOpen() const override;
     juce::String getName() const override;
 
 private:

@@ -51,6 +51,13 @@ void refreshChoiceItems (juce::ComboBox* box, int count,
 
     box->setSelectedItemIndex (selected, juce::dontSendNotification);
 }
+
+// Debug-Log fuer den Auto-Test (siehe InstrumentHost.cpp).
+void autoLog (const juce::String& line)
+{
+    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+    out << line << '\n';
+}
 } // namespace
 
 Editor::Editor (Processor& processorToEdit)
@@ -168,7 +175,7 @@ Editor::Editor (Processor& processorToEdit)
         instrumentBox->setTooltip ("Aktives Instrument (Standalone)");
         instrumentBox->addItem ("Interner Synth", 1);
         instrumentBox->setSelectedItemIndex (0, juce::dontSendNotification);
-        instrumentBox->onChange = [this] { /* Auswahl aendern, wenn noetig */ };
+        instrumentBox->onChange = [this] { onInstrumentSelected (instrumentBox->getSelectedItemIndex()); };
         addAndMakeVisible (instrumentBox);
 
         loadButton.setTooltip ("VST3-Plugin als Instrument laden (Standalone)");
@@ -189,9 +196,9 @@ Editor::Editor (Processor& processorToEdit)
     processor.apvts.addParameterListener ("names.mode", this);
     refreshNameLabels();
 
-    // Auto-Test (nur wenn HEPTACHORD_AUTO_VST gesetzt ist): VST3 automatisch
-    // laden, eine Note spielen und danach beenden — fuer automatisierte Tests
-    // ohne GUI-Bedienung.
+    // Auto-Test (nur wenn HEPTACHORD_AUTO_VST gesetzt ist): VST3 laden,
+    // Editor oeffnen/schliessen/neu oeffnen, zum internen Synth wechseln
+    // und zurueck — fuer automatisierte Tests ohne GUI-Bedienung.
     if (standalone)
     {
         const auto autoVstPath = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_VST", {});
@@ -200,47 +207,75 @@ Editor::Editor (Processor& processorToEdit)
         {
             juce::Timer::callAfterDelay (1500, [this, autoVstPath]
             {
-                auto logLine = [] (const char* text)
-                {
-                    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
-                    out << text << '\n';
-                };
-
                 auto quitApp = []
                 {
                     if (auto* app = juce::JUCEApplication::getInstance())
                         app->quit();
                 };
 
-                auto inst = createVstPluginInstrument();
-                auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
-
-                if (! vstInst->load (juce::File (autoVstPath)))
+                if (! loadInstrumentFromFile (juce::File (autoVstPath)))
                 {
-                    logLine ("AUTO: load failed");
+                    autoLog ("AUTO: load failed");
                     quitApp();
                     return;
                 }
-
-                processor.setInstrument (std::move (inst));
-                logLine ("AUTO: loaded");
+                autoLog ("AUTO: loaded name=" + processor.instrument()->getName());
 
                 juce::Timer::callAfterDelay (1000, [this]
                 {
-                    processor.injectKeyboardNoteOn (60, 100);
-                    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
-                    out << "AUTO: note on\n";
+                    showInstrumentEditor();
+                    autoLog ("AUTO: editor open1=" + juce::String ((int) processor.instrument()->isEditorOpen()));
                 });
 
-                juce::Timer::callAfterDelay (4000, [this]
+                juce::Timer::callAfterDelay (1500, [this]
+                {
+                    processor.instrument()->hideEditor();
+                    autoLog ("AUTO: editor hidden=" + juce::String ((int) processor.instrument()->isEditorOpen()));
+                });
+
+                juce::Timer::callAfterDelay (2000, [this]
+                {
+                    showInstrumentEditor();
+                    autoLog ("AUTO: editor open2=" + juce::String ((int) processor.instrument()->isEditorOpen()));
+                });
+
+                juce::Timer::callAfterDelay (3000, [this]
+                {
+                    onInstrumentSelected (0);
+                    autoLog ("AUTO: switched to internal name=" + processor.instrument()->getName());
+                });
+
+                juce::Timer::callAfterDelay (3500, [this]
+                {
+                    processor.injectKeyboardNoteOn (60, 100);
+                    autoLog ("AUTO: note on internal");
+                });
+
+                juce::Timer::callAfterDelay (6000, [this]
                 {
                     processor.injectKeyboardNoteOff (60);
                 });
 
-                juce::Timer::callAfterDelay (6500, [this, quitApp]
+                juce::Timer::callAfterDelay (7000, [this]
                 {
-                    std::ofstream out ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
-                    out << "AUTO: done\n";
+                    onInstrumentSelected (1);
+                    autoLog ("AUTO: switched back name=" + processor.instrument()->getName());
+                });
+
+                juce::Timer::callAfterDelay (7500, [this]
+                {
+                    processor.injectKeyboardNoteOn (62, 100);
+                    autoLog ("AUTO: note on vst");
+                });
+
+                juce::Timer::callAfterDelay (10000, [this]
+                {
+                    processor.injectKeyboardNoteOff (62);
+                });
+
+                juce::Timer::callAfterDelay (11000, [this, quitApp]
+                {
+                    autoLog ("AUTO: done");
                     quitApp();
                 });
             });
@@ -571,24 +606,68 @@ void Editor::loadInstrument()
             if (file == juce::File {})
                 return;
 
-            auto inst = createVstPluginInstrument();
-            auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
-            if (! vstInst->load (file))
+            if (! loadInstrumentFromFile (file))
             {
                 juce::NativeMessageBox::showMessageBoxAsync (
                     juce::MessageBoxIconType::WarningIcon, "Heptachord",
                     "Das VST3-Plugin konnte nicht geladen werden.", this);
-                return;
             }
-
-            processor.setInstrument (std::move (inst));
-
-            instrumentBox->addItem (processor.instrument()->getName(),
-                                    instrumentBox->getNumItems() + 1);
-            instrumentBox->setSelectedItemIndex (instrumentBox->getNumItems() - 1,
-                                                 juce::dontSendNotification);
-            editButton.setEnabled (processor.instrument()->hasEditor());
         });
+}
+
+bool Editor::loadInstrumentFromFile (const juce::File& file)
+{
+    auto inst = createVstPluginInstrument();
+    auto* vstInst = static_cast<VstPluginInstrument*> (inst.get());
+
+    if (! vstInst->load (file))
+        return false;
+
+    processor.setInstrument (std::move (inst));
+
+    // Eintrag in der ComboBox: schon vorhanden? Dann nur auswaehlen,
+    // sonst neuen Eintrag anhaengen (Box-Index = Datei-Index + 1).
+    int fileIndex = m_instrumentFiles.indexOf (file);
+    if (fileIndex < 0)
+    {
+        m_instrumentFiles.add (file);
+        fileIndex = m_instrumentFiles.size() - 1;
+        instrumentBox->addItem (processor.instrument()->getName(),
+                                instrumentBox->getNumItems() + 1);
+    }
+
+    instrumentBox->setSelectedItemIndex (fileIndex + 1, juce::dontSendNotification);
+    editButton.setEnabled (processor.instrument()->hasEditor());
+    return true;
+}
+
+void Editor::onInstrumentSelected (int boxIndex)
+{
+    if (boxIndex < 0)
+        return;
+
+    // 0 = interner Synth.
+    if (boxIndex == 0)
+    {
+        processor.setInstrument (createTestSynthInstrument());
+        editButton.setEnabled (false);
+        return;
+    }
+
+    const int fileIndex = boxIndex - 1;
+    if (fileIndex < 0 || fileIndex >= m_instrumentFiles.size())
+        return;
+
+    if (loadInstrumentFromFile (m_instrumentFiles[fileIndex]))
+        return;
+
+    // Laden fehlgeschlagen: zurueck auf den internen Synth.
+    instrumentBox->setSelectedItemIndex (0, juce::dontSendNotification);
+    processor.setInstrument (createTestSynthInstrument());
+    editButton.setEnabled (false);
+    juce::NativeMessageBox::showMessageBoxAsync (
+        juce::MessageBoxIconType::WarningIcon, "Heptachord",
+        "Das VST3-Plugin konnte nicht geladen werden.", this);
 }
 
 void Editor::showInstrumentEditor()

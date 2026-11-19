@@ -23,6 +23,20 @@ void TestSynthInstrument::prepare (double sampleRate)
 void TestSynthInstrument::process (const juce::MidiBuffer& midi, juce::AudioBuffer<float>& buffer)
 {
     m_synth.process (midi, buffer);
+
+    // Debug (Auto-Test): loggen, wenn der interne Synth klingt.
+    float peak = 0.0f;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            peak = std::max (peak, std::abs (buffer.getSample (ch, i)));
+
+    static int logCount = 0;
+    if (peak > 0.001f && logCount < 15)
+    {
+        std::ofstream dbg ("C:/Users/zichosch.thomas/AppData/Local/Temp/opencode/dbg_audio.txt", std::ios::app);
+        dbg << "TESTSYNTH peak=" << peak << " midiIn=" << midi.getNumEvents() << '\n';
+        ++logCount;
+    }
 }
 
 void TestSynthInstrument::reset()
@@ -166,6 +180,13 @@ bool VstPluginInstrument::load (const juce::File& file)
 
 void VstPluginInstrument::unload()
 {
+    // Zuerst Fenster und Editor zerstoeren, dann das Plugin — der Editor
+    // darf nicht an einem toten AudioProcessor haengen.
+    if (m_editorWindow != nullptr)
+    {
+        m_editorWindow->setVisible (false);
+        m_editorWindow.reset();  // zerstoert auch den Editor (setContentOwned)
+    }
     m_editor.reset();
     m_plugin.reset();
     m_pluginName.clear();
@@ -206,20 +227,27 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
     if (m_plugin == nullptr)
         return;
 
+    // Fenster schon vorhanden (z.B. nach dem Schliessen mit X): nur wieder
+    // anzeigen — der Editor bleibt erhalten, damit ein zweites Oeffnen
+    // jederzeit funktioniert.
+    if (m_editorWindow != nullptr)
+    {
+        m_editorWindow->setVisible (true);
+        m_editorWindow->toFront (true);
+        return;
+    }
+
     if (m_editor == nullptr)
         m_editor.reset (m_plugin->createEditorIfNeeded());
 
     if (m_editor == nullptr)
         return;
 
-    if (m_editorWindow == nullptr)
-    {
-        auto* window = new VstEditorWindow (m_plugin->getName(), this);
-        m_editorWindow.reset (window);
-        window->setContentOwned (m_editor.release(), true);
-        window->centreWithSize (window->getContentComponent()->getWidth(),
-                                window->getContentComponent()->getHeight());
-    }
+    auto* window = new VstEditorWindow (m_plugin->getName(), this);
+    m_editorWindow.reset (window);
+    window->setContentOwned (m_editor.release(), true);
+    window->centreWithSize (window->getContentComponent()->getWidth(),
+                            window->getContentComponent()->getHeight());
 
     m_editorWindow->setVisible (true);
     m_editorWindow->toFront (true);
@@ -227,12 +255,15 @@ void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
 
 void VstPluginInstrument::hideEditor()
 {
+    // Nur verstecken — Fenster und Editor bleiben erhalten, damit der
+    // EDITOR-Knopf den Editor jederzeit wieder oeffnen kann.
     if (m_editorWindow != nullptr)
-    {
         m_editorWindow->setVisible (false);
-        m_editor.reset();  // Window besitzt den Editor (setContentOwned true)
-        m_editorWindow.reset();
-    }
+}
+
+bool VstPluginInstrument::isEditorOpen() const
+{
+    return m_editorWindow != nullptr && m_editorWindow->isVisible();
 }
 
 juce::String VstPluginInstrument::getName() const

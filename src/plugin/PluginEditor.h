@@ -192,6 +192,10 @@ private:
     void exportNotes();
     void updateRecorderButtons();
     void loadInstrument();
+    // Laedt eine VST3-Datei und setzt sie als aktives Instrument (true=ok).
+    bool loadInstrumentFromFile (const juce::File& file);
+    // ComboBox-Wechsel: 0 = interner Synth, >0 = VST aus m_instrumentFiles.
+    void onInstrumentSelected (int boxIndex);
     void showInstrumentEditor();
     juce::TextButton exportButton { "EXPORT" };
     MidiDragButton dragButton { "DRAG" };
@@ -207,6 +211,8 @@ private:
     juce::TextButton loadButton { "LADEN..." };
     juce::TextButton editButton { "EDITOR" };
     std::unique_ptr<juce::FileChooser> instrumentFileChooser;
+    // Datei pro ComboBox-Eintrag (Index i => Box-Eintrag i+1, 0 ist intern).
+    juce::Array<juce::File> m_instrumentFiles;
     juce::File lastExportedFile;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
