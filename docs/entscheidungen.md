@@ -406,3 +406,19 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Tick 0). EXPORT/DRAG/WAV/NOTEN bleiben Ein-Zyklus-Exporte aus Parametern
     und sagen das kuenftig im Tooltip; damit ist der Datenverlust behoben,
     dass beim Speichern nur die ersten Steps landeten. Glossar: Zyklus/Aufnahme.
+
+## Runde 19 (GUI-Zoom, Ordner-Reparatur)
+
+90. **GUI-Zoom im Inhalts-Container** - Der direkte `AffineTransform` auf dem
+    Editor (wie in v0.1.6) skalierte die Standalone doppelt und schnitt
+    Steuerelemente ab. Deshalb liegen alle Controls und das Zeichnen jetzt in
+    einem `ContentComponent` mit Basis-Koordinaten (1000x664); nur dieser
+    Container wird transformiert, waehrend die Editor-Groesse linear mit dem
+    Faktor waechst. Feste Stufen 100/125/150/175/200 %. Mit UI Automation
+    geprueft: Fenster 2004→4004 px linear, alle Elemente bei 200 % im
+    sichtbaren Bereich, Ruecksetzung auf 100 % sauber.
+91. **Repository nach Verzeichnis-Umzug wiederhergestellt** - Die echte
+    `.git`-Datenbank war beim Umzug des alten Haupt-Worktrees verloren;
+    Wiederherstellung aus `origin/release/v0.1.7-stable` (git init, fetch,
+    HEAD/Branches neu), JUCE-Submodule separat nachgezogen. Projektordner
+    heisst jetzt `C:\opencode-projekte\Heptachord`.

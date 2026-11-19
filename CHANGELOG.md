@@ -24,6 +24,8 @@ werden damit abgelöst. Der Branch `release/v0.1.7-stable` enthält diesen Stand
   PLAY nur die Aufnahme ohne Engine-Noten.
 - INSTRUMENT-Panel im Global-Bereich (aus v0.1.6 portiert); das VST-Editor-
   Fenster merkt Größe/Position, der EDITOR-Knopf zeigt den Offen-Zustand.
+- GUI-Zoom in fünf Stufen (100/125/150/175/200 %) über einen eigenen
+  Inhalts-Container: Layout bleibt konstant, Editor-Fenster wächst linear.
 - Prüfung: 150 Testfälle / 15757 Assertions, `ctest --preset ninja` 100 %,
   VST-Auto-Tests der sechs zuvor crashenden Instrumente mit `exit=0`.
 

@@ -72,6 +72,10 @@ Editor::Editor (Processor& processorToEdit)
     setLookAndFeel (&lookAndFeel);
     standalone = processor.isStandalone();
 
+    // Der Container nimmt alle Controls auf und bleibt in Basis-Koordinaten.
+    m_content.setBounds (0, 0, kWindowWidth, kWindowHeight);
+    juce::Component::addAndMakeVisible (m_content);
+
     buildControls();
 
     factoryPresets = Preset::factoryPresets();
@@ -84,34 +88,59 @@ Editor::Editor (Processor& processorToEdit)
     presetBox->setSelectedItemIndex (-1, juce::dontSendNotification);
     presetBox->onChange = [this] { applySelectedPreset(); };
 
-    addAndMakeVisible (resetButton);
+    // GUI-Zoom in festen Stufen (Standalone + VST3). Nur der Inhalts-
+    // Container wird transformiert, die Editor-Groesse waechst linear mit.
+    zoomBox = combos.add (new juce::ComboBox());
+    zoomBox->setJustificationType (juce::Justification::centredLeft);
+    zoomBox->addItem ("100 %", 1);
+    zoomBox->addItem ("125 %", 2);
+    zoomBox->addItem ("150 %", 3);
+    zoomBox->addItem ("175 %", 4);
+    zoomBox->addItem ("200 %", 5);
+    zoomBox->setSelectedItemIndex (0, juce::dontSendNotification);
+    zoomBox->setTooltip ("GUI-Zoom (Standalone + VST3)");
+    zoomBox->onChange = [this]
+    {
+        const int idx = zoomBox->getSelectedItemIndex();
+        m_zoomFactor = 1.0f + static_cast<float> (juce::jmax (0, idx)) * 0.25f;
+
+        const int w = juce::roundToInt (static_cast<float> (kWindowWidth) * m_zoomFactor);
+        const int h = juce::roundToInt (static_cast<float> (kWindowHeight) * m_zoomFactor);
+        if (getWidth() != w || getHeight() != h)
+            setSize (w, h);
+
+        resized();
+    };
+    m_content.addAndMakeVisible (*zoomBox);
+
+    m_content.addAndMakeVisible (resetButton);
     resetButton.setTooltip ("Setzt das Raster am naechsten Step-Rand auf Step 1");
     resetButton.onClick = [this] { processor.triggerReset(); };
 
     if (standalone)
     {
-        addAndMakeVisible (transportButton);
+        m_content.addAndMakeVisible (transportButton);
         transportButton.onClick = [this]
         {
             processor.toggleStandaloneTransport();
             updateTransportButton();
         };
 
-        addAndMakeVisible (exportButton);
+        m_content.addAndMakeVisible (exportButton);
         exportButton.setTooltip ("Einen Zyklus als MIDI-Datei speichern (fester Seed 1)");
         exportButton.onClick = [this] { exportMidi(); };
 
-        addAndMakeVisible (dragButton);
+        m_content.addAndMakeVisible (dragButton);
         dragButton.setTooltip ("MIDI-Datei auf ein anderes Programm ziehen");
         dragButton.onDragStart = [this] { dragMidi(); };
 
-        addAndMakeVisible (wavButton);
+        m_content.addAndMakeVisible (wavButton);
         wavButton.setTooltip ("Einen Zyklus als WAV rendern (Test-Synth)");
         wavButton.onClick = [this] { exportWav(); };
 
         notesButton.setTooltip ("Notenfolge als MIDI + Text/CSV exportieren");
         notesButton.onClick = [this] { exportNotes(); };
-        addAndMakeVisible (notesButton);
+        m_content.addAndMakeVisible (notesButton);
 
         recButton.setTooltip ("Aufnahme an der naechsten Step-Grenze starten (ersetzt den vorherigen Take)");
         recButton.onClick = [this]
@@ -122,11 +151,11 @@ Editor::Editor (Processor& processorToEdit)
                 processor.startRecording();
             updateRecorderButtons();
         };
-        addAndMakeVisible (recButton);
+        m_content.addAndMakeVisible (recButton);
 
         playButton.setTooltip ("Aufnahme abspielen (ohne Engine-Noten)");
         playButton.onClick = [this] { if (processor.isPlaying()) processor.stopPlayback(); else processor.startPlayback(); updateRecorderButtons(); };
-        addAndMakeVisible (playButton);
+        m_content.addAndMakeVisible (playButton);
 
         stopButton.setTooltip ("Aufnahme oder Wiedergabe stoppen");
         stopButton.onClick = [this]
@@ -135,20 +164,20 @@ Editor::Editor (Processor& processorToEdit)
             processor.stopPlayback();
             updateRecorderButtons();
         };
-        addAndMakeVisible (stopButton);
+        m_content.addAndMakeVisible (stopButton);
 
         clearButton.setTooltip ("Aufnahme loeschen");
         clearButton.onClick = [this] { processor.clearRecording(); updateRecorderButtons(); updateRecordingStatus(); };
-        addAndMakeVisible (clearButton);
+        m_content.addAndMakeVisible (clearButton);
 
         saveRecordingButton.setTooltip ("Die gesamte Aufnahme (alle Zyklen) als MIDI-Datei speichern");
         saveRecordingButton.onClick = [this] { saveRecording(); };
-        addAndMakeVisible (saveRecordingButton);
+        m_content.addAndMakeVisible (saveRecordingButton);
 
         recordingStatusLabel.setFont (juce::FontOptions (12.0f));
         recordingStatusLabel.setColour (juce::Label::textColourId, HeptachordLookAndFeel::accent());
         recordingStatusLabel.setJustificationType (juce::Justification::centredRight);
-        addAndMakeVisible (recordingStatusLabel);
+        m_content.addAndMakeVisible (recordingStatusLabel);
 
         recordingTargetBox = combos.add (new juce::ComboBox());
         recordingTargetBox->addItem ("Ziel: unbegrenzt", 1);
@@ -165,7 +194,7 @@ Editor::Editor (Processor& processorToEdit)
             processor.setRecordingTarget (index >= 0 && index < 5 ? targets[index] : 0);
             updateRecordingStatus();
         };
-        addAndMakeVisible (recordingTargetBox);
+        m_content.addAndMakeVisible (recordingTargetBox);
 
         updateRecorderButtons();
         updateRecordingStatus();
@@ -176,11 +205,11 @@ Editor::Editor (Processor& processorToEdit)
         instrumentBox->addItem ("Interner Synth", 1);
         instrumentBox->setSelectedItemIndex (0, juce::dontSendNotification);
         instrumentBox->onChange = [this] { onInstrumentSelected (instrumentBox->getSelectedItemIndex()); };
-        addAndMakeVisible (instrumentBox);
+        m_content.addAndMakeVisible (instrumentBox);
 
         loadButton.setTooltip ("VST3-Plugin als Instrument laden (Standalone)");
         loadButton.onClick = [this] { loadInstrument(); };
-        addAndMakeVisible (loadButton);
+        m_content.addAndMakeVisible (loadButton);
 
         editButton.setTooltip ("Plugin-Editor-Fenster oeffnen/schliessen");
         editButton.onClick = [this]
@@ -195,7 +224,7 @@ Editor::Editor (Processor& processorToEdit)
                 showInstrumentEditor();
         };
         editButton.setEnabled (false);
-        addAndMakeVisible (editButton);
+        m_content.addAndMakeVisible (editButton);
 
         startTimerHz (30);
         setWantsKeyboardFocus (true);
@@ -408,7 +437,7 @@ juce::Slider& Editor::addKnob (const juce::String& paramId, const juce::String& 
     slider->setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 48, 13);
     slider->setPopupDisplayEnabled (false, false, this);
-    addAndMakeVisible (slider);
+    m_content.addAndMakeVisible (slider);
 
     sliderAttachments.push_back (
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
@@ -426,7 +455,7 @@ juce::ComboBox& Editor::addChoice (const juce::String& paramId, const juce::Stri
 {
     auto* box = combos.add (new juce::ComboBox());
     box->setJustificationType (juce::Justification::centredLeft);
-    addAndMakeVisible (box);
+    m_content.addAndMakeVisible (box);
 
     comboAttachments.push_back (
         std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
@@ -444,7 +473,7 @@ juce::ToggleButton& Editor::addToggle (const juce::String& paramId, const juce::
 {
     auto* button = toggles.add (new juce::ToggleButton());
     button->setButtonText (caption);
-    addAndMakeVisible (button);
+    m_content.addAndMakeVisible (button);
 
     buttonAttachments.push_back (
         std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
@@ -645,7 +674,7 @@ void Editor::timerCallback()
         HeptachordLookAndFeel::setCurrentStepActiveButton (
             (current >= 0 && current < 8) ? steps[static_cast<std::size_t> (current)].active : nullptr);
 
-        repaint();
+        m_content.repaint();
     }
 
     if (standalone)
@@ -1120,7 +1149,16 @@ void Editor::parameterChanged (const juce::String& parameterID, float /*newValue
     });
 }
 
-void Editor::paintOverChildren (juce::Graphics& g)
+void Editor::paint (juce::Graphics&)
+{
+    // Der Inhalt zeichnet im ContentComponent (dort wirkt der Zoom-Transform).
+}
+
+void Editor::paintOverChildren (juce::Graphics&)
+{
+}
+
+void Editor::paintContentOver (juce::Graphics& g)
 {
     if (standalone && m_highlightedStep >= 0 && m_highlightedStep < 8)
     {
@@ -1139,7 +1177,7 @@ void Editor::paintOverChildren (juce::Graphics& g)
     }
 }
 
-void Editor::paint (juce::Graphics& g)
+void Editor::paintContent (juce::Graphics& g)
 {
     // Step-Highlight (gelb): Active-Toggle des aktuellen Steps registrieren.
     {
@@ -1232,7 +1270,9 @@ void Editor::resized()
 {
     staticCaptions.clear();
 
-    auto bounds = getLocalBounds().reduced (kMargin);
+    // Immer in Basis-Koordinaten layouten; der Zoom transformiert nur den
+    // Container. Damit bleibt das Layout bei allen Stufen identisch.
+    auto bounds = juce::Rectangle<int> (0, 0, kWindowWidth, kWindowHeight).reduced (kMargin);
 
     headerArea = bounds.removeFromTop (kHeaderHeight);
     bounds.removeFromTop (kGap);
@@ -1276,6 +1316,10 @@ void Editor::resized()
                                     entry.text });
     }
 
+    // Nur der Container skaliert - der Editor bleibt fuer den Host untransformiert.
+    m_content.setTransform (m_zoomFactor == 1.0f
+                                ? juce::AffineTransform()
+                                : juce::AffineTransform::scale (m_zoomFactor));
 }
 
 void Editor::layoutHeader (juce::Rectangle<int> area)
@@ -1290,7 +1334,7 @@ void Editor::layoutHeader (juce::Rectangle<int> area)
     // Bezeichnungsmodus links neben dem Preset-Selektor (Decision 83).
     namesBox->setBounds (buttons.removeFromRight (150).reduced (2, 6));
     presetBox->setBounds (buttons.removeFromRight (160).reduced (2, 6));
-
+    zoomBox->setBounds (buttons.removeFromRight (110).reduced (2, 6));
 }
 
 void Editor::layoutGlobal (juce::Rectangle<int> area)

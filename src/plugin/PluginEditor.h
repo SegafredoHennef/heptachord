@@ -38,6 +38,20 @@ public:
     void timerCallback() override;
 
 private:
+    // Inhalts-Container: Controls und Zeichnen bleiben in Basis-Koordinaten
+    // (1000x664). Nur dieser Container wird vom Zoom transformiert; der
+    // Editor selbst behaelt untransformierte Bounds fuer den Host-Fenster.
+    class ContentComponent final : public juce::Component
+    {
+    public:
+        explicit ContentComponent (Editor& ownerIn) : owner (ownerIn) {}
+        void paint (juce::Graphics& g) override { owner.paintContent (g); }
+        void paintOverChildren (juce::Graphics& g) override { owner.paintContentOver (g); }
+
+    private:
+        Editor& owner;
+    };
+
     struct CaptionEntry
     {
         juce::Component* anchor = nullptr;
@@ -145,6 +159,14 @@ private:
     juce::Rectangle<int> stepsArea;
 
     bool standalone = false;
+
+    // Zoom (100/125/150/175/200 %) ueber einen eigenen Inhalts-Container.
+    ContentComponent m_content { *this };
+    float m_zoomFactor = 1.0f;
+    juce::ComboBox* zoomBox = nullptr;
+
+    void paintContent (juce::Graphics& g);
+    void paintContentOver (juce::Graphics& g);
 
     // VST-Editor (VITAL etc.) sichtbar?
     bool m_instrumentEditorVisible = false;

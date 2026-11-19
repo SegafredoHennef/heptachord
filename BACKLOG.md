@@ -4,10 +4,9 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Offen
 
-- [ ] GUI-Zoom (100/125/150/175/200 %) — Port aus v0.1.6 verworfen: der
-      `AffineTransform`-Zoom skaliert in der Standalone doppelt und schneidet
-      Steuerelemente ab; braucht eine saubere Container-Loesung (separater
-      Inhalts-Container), bevor es ausgeliefert wird
+- [x] GUI-Zoom (100/125/150/175/200 %) — Inhalts-Container mit Transform;
+      Editor-Groesse waechst linear, alle Controls bleiben im sichtbaren Bereich
+      (per UI Automation bei 100–200 % geprueft, Entscheidung 90)
 - [x] INSTRUMENT-Panel im Global-Bereich (aus v0.1.6) portiert
 - [ ] "Skala zwei mal auswaehlbar" — klaeren, welche ComboBox entfernt werden soll
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
