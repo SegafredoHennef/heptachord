@@ -541,20 +541,7 @@ void Editor::showInstrumentEditor()
     if (! inst->hasEditor())
         return;
 
-    // Toggle: wenn Editor sichtbar, schliessen; sonst oeffnen.
-    if (m_instrumentEditorVisible)
-    {
-        inst->hideEditor();
-        m_instrumentEditorVisible = false;
-        editButton.setButtonText ("EDITOR");
-        resized();  // Layout neu berechnen
-    }
-    else
-    {
-        inst->showEditor (this);
-        m_instrumentEditorVisible = true;
-        editButton.setButtonText ("SCHLIESSEN");
-    }
+    inst->showEditor (this);
 }
 
 void Editor::updateRecorderButtons()

@@ -112,30 +112,62 @@ bool VstPluginInstrument::hasEditor() const
     return m_plugin != nullptr;
 }
 
-void VstPluginInstrument::showEditor (juce::Component* parent)
+// Fenster mit Titelleiste und Schliessen-Button fuer VST-Editor.
+namespace
 {
-    if (m_plugin == nullptr || parent == nullptr)
+class VstEditorWindow : public juce::DocumentWindow
+{
+public:
+    VstEditorWindow (const juce::String& name, VstPluginInstrument* ownerIn)
+        : juce::DocumentWindow (name, juce::Colours::darkgrey,
+                                juce::DocumentWindow::allButtons),
+          owner (ownerIn)
+    {
+        setUsingNativeTitleBar (true);
+        setResizable (true, true);
+    }
+
+    void closeButtonPressed() override
+    {
+        if (owner != nullptr)
+            owner->hideEditor();
+    }
+
+    VstPluginInstrument* owner = nullptr;
+};
+} // namespace
+
+void VstPluginInstrument::showEditor (juce::Component* /*parent*/)
+{
+    if (m_plugin == nullptr)
         return;
 
     if (m_editor == nullptr)
         m_editor.reset (m_plugin->createEditorIfNeeded());
 
-    if (m_editor != nullptr)
+    if (m_editor == nullptr)
+        return;
+
+    if (m_editorWindow == nullptr)
     {
-        m_editor->setTopLeftPosition (0, 0);
-        parent->addChildComponent (m_editor.get());
-        m_editor->setVisible (true);
-        m_editor->grabKeyboardFocus();
+        auto* window = new VstEditorWindow (m_plugin->getName(), this);
+        m_editorWindow.reset (window);
+        window->setContentOwned (m_editor.release(), true);
+        window->centreWithSize (window->getContentComponent()->getWidth(),
+                                window->getContentComponent()->getHeight());
     }
+
+    m_editorWindow->setVisible (true);
+    m_editorWindow->toFront (true);
 }
 
 void VstPluginInstrument::hideEditor()
 {
-    if (m_editor != nullptr)
+    if (m_editorWindow != nullptr)
     {
-        m_editor->setVisible (false);
-        if (m_editor->getParentComponent() != nullptr)
-            m_editor->getParentComponent()->removeChildComponent (m_editor.get());
+        m_editorWindow->setVisible (false);
+        m_editor.reset();  // Window besitzt den Editor (setContentOwned true)
+        m_editorWindow.reset();
     }
 }
 

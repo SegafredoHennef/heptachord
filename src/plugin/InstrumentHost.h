@@ -76,6 +76,7 @@ private:
     std::unique_ptr<juce::AudioPluginFormatManager> m_formatManager;
     std::unique_ptr<juce::AudioPluginInstance> m_plugin;
     std::unique_ptr<juce::AudioProcessorEditor> m_editor;
+    std::unique_ptr<juce::DocumentWindow> m_editorWindow;
     juce::String m_pluginName;
     double m_sampleRate = 44100.0;
 };
