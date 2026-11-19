@@ -491,3 +491,22 @@ festgehalten; die vollständige Begründung steht in der Spezifikation.
     Beim internen Synth entfallen beide Teile. Uebrige Exportpfade
     (SPEICHERN/EXPORT/WAV/NOTEN) behalten das Schema aus Entscheidung 97.
     Glossar: neuer Begriff **VST-Patch**, getrennt von Heptachords **Preset**.
+
+## Runde 23 (VST3-Ordner)
+
+100. **Merkt sich den letzten VST3-Ordner** - Der Lade-Dialog startete bisher
+    immer in `C:/Program Files/Common Files/VST3` (Fallback Desktop). Er kann
+    zwar beliebig navigieren (JUCE-FileChooser: initial directory only), aber
+    der Ordner wurde nicht gemerkt. Jetzt wird bei erfolgreichem Laden die
+    Elternverzeichnis des Plugins in einer JUCE-`PropertiesFile`
+    (`<userAppData>/Blakkmoon Audio/heptachord.ini`, Key `lastVst3Folder`)
+    gespeichert und beim naechsten Oeffnen als Startordner verwendet.
+    Nur dieser Dialog nutzt den gemerkten Ordner; Export-Dialoge starten
+    weiter auf dem Desktop. Keine Suchpfade/Plugin-Scanner-Integration.
+101. **Analog Lab 3 bietet keine JUCE-Programme** - Die Diagnose meldet
+    `getNumPrograms() = 0`, `getCurrentProgram() = 0`, leerer Patch-Name;
+    MIDI-Programmwechsel 0/1/2/10/50 und geoeffneter Editor bleiben stumm
+    (Peak 0.0000). Ein Default-Patch kann deshalb **nicht** ueber die
+    Programm-API oder MIDI-Programmwechsel vorgegeben werden. Das Patch muss
+    im Plugin-Editor selbst gewaehlt werden (oder ueber einen noch nicht
+    existierenden Import des Plugin-State).

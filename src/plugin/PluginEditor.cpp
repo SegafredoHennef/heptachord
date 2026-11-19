@@ -8,6 +8,8 @@
 #include "plugin/AudioExport.h"
 #include "plugin/PluginProcessor.h"
 
+#include <juce_data_structures/juce_data_structures.h>
+
 #include <functional>
 #include <fstream>
 
@@ -24,6 +26,36 @@ constexpr int kGlobalHeight = 98;
 constexpr int kVoicesHeight = 214;
 constexpr int kPanelPadding = 8;
 constexpr int kZoneTitleHeight = 14;
+
+// Merkt sich nur den zuletzt genutzten VST3-Ordner (Entscheidung 100).
+juce::File vst3SettingsFile()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+             .getChildFile ("Blakkmoon Audio")
+             .getChildFile ("heptachord.ini");
+}
+
+juce::File rememberedVst3Folder()
+{
+    juce::PropertiesFile props (vst3SettingsFile(), juce::PropertiesFile::Options {});
+
+    if (! props.isValidFile())
+        return {};
+
+    const juce::String path = props.getValue ("lastVst3Folder");
+    const juce::File folder (path);
+    return path.isNotEmpty() && folder.isDirectory() ? folder : juce::File {};
+}
+
+void rememberVst3Folder (const juce::File& folder)
+{
+    if (! folder.isDirectory())
+        return;
+
+    juce::PropertiesFile props (vst3SettingsFile(), juce::PropertiesFile::Options {});
+    props.setValue ("lastVst3Folder", folder.getFullPathName());
+    props.saveIfNeeded();
+}
 
 juce::String stepId (int index, const char* suffix)
 {
@@ -278,6 +310,11 @@ Editor::Editor (Processor& processorToEdit)
 
             if (juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_CHANNELS_EDITOR", {}).isNotEmpty())
                 showInstrumentEditor();
+
+            if (auto* vst = dynamic_cast<VstPluginInstrument*> (processor.instrument()))
+                autoLog ("CHAN programs=" + juce::String (vst->numPrograms())
+                         + " current=" + juce::String (vst->currentProgram())
+                         + " name=" + vst->patchName());
 
             const auto programEnv = juce::SystemStats::getEnvironmentVariable ("HEPTACHORD_AUTO_CHANNELS_PROGRAM", {});
             if (programEnv.isNotEmpty())
@@ -819,11 +856,18 @@ void Editor::applyPreset (const Preset& preset)
 
 void Editor::loadInstrument()
 {
-    // Voreingestellter Ordner: der systemweite VST3-Standardpfad. Falls er
-    // nicht existiert, als Rueckfall der Desktop.
-    juce::File vst3Folder ("C:/Program Files/Common Files/VST3");
+    // Startordner: zuletzt genutzt, sonst der systemweite VST3-Standardpfad,
+    // falls der nicht existiert der Desktop. Der Dialog erlaubt weiterhin,
+    // ueberallhin zu navigieren.
+    juce::File vst3Folder = rememberedVst3Folder();
+
     if (! vst3Folder.isDirectory())
-        vst3Folder = juce::File::getSpecialLocation (juce::File::userDesktopDirectory);
+    {
+        vst3Folder = juce::File ("C:/Program Files/Common Files/VST3");
+
+        if (! vst3Folder.isDirectory())
+            vst3Folder = juce::File::getSpecialLocation (juce::File::userDesktopDirectory);
+    }
 
     instrumentFileChooser = std::make_unique<juce::FileChooser> (
         "VST3-Plugin als Instrument laden",
@@ -838,7 +882,11 @@ void Editor::loadInstrument()
             if (file == juce::File {})
                 return;
 
-            if (! loadInstrumentFromFile (file))
+            if (loadInstrumentFromFile (file))
+            {
+                rememberVst3Folder (file.getParentDirectory());
+            }
+            else
             {
                 const auto reason = blockedPluginReason (file);
 

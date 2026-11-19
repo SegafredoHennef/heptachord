@@ -525,6 +525,16 @@ bool isGenericPatchName (const juce::String& name)
     return false;
 }
 
+int VstPluginInstrument::numPrograms() const noexcept
+{
+    return m_plugin != nullptr ? m_plugin->getNumPrograms() : 0;
+}
+
+int VstPluginInstrument::currentProgram() const noexcept
+{
+    return m_plugin != nullptr ? m_plugin->getCurrentProgram() : -1;
+}
+
 juce::String VstPluginInstrument::patchName() const
 {
     if (m_plugin == nullptr)

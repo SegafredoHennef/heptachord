@@ -83,6 +83,10 @@ public:
     juce::String getName() const override;
     juce::String patchName() const override;
 
+    // Diagnose: vom Plugin angebotene Programme.
+    int numPrograms() const noexcept;
+    int currentProgram() const noexcept;
+
 private:
     std::unique_ptr<juce::AudioPluginFormatManager> m_formatManager;
     std::unique_ptr<juce::AudioPluginInstance> m_plugin;

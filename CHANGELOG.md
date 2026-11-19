@@ -30,7 +30,8 @@ werden damit abgelöst. Der Branch `release/v0.1.7-stable` enthält diesen Stand
   VST-Instrumente erhalten MIDI auf Kanal 1–4 (vorerst nur THRU war hörbar).
 - Editor-Fenster: Position nur bei voller Sichtbarkeit gemerkt; zu große
   Fenster (z. B. Surge XT) werden mit erreichbarer Titelzeile platziert.
-- VST3-Ladedialog startet im Standardordner `Common Files\VST3`.
+- VST3-Ladedialog startet im Standardordner `Common Files\VST3` bzw. im
+  zuletzt genutzten Ordner (wird gemerkt; freie Navigation bleibt möglich).
 - Einheitliche Dateinamen `Heptachord_<Zeitstempel>_<Grundton>_<Skala>_<BPM>`
   (Aufnahme mit `Aufnahme_` im Präfix); zweiter Drag-Knopf `DRAG REC` für die
   gesamte Aufnahme. Gedraggte Dateien enthalten bei geladenem VST zusätzlich

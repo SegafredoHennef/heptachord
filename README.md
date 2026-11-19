@@ -80,6 +80,10 @@ VST3-Ordner kopiert und von der DAW gescannt (siehe Download).
 Aktuelle Version: **v0.1.7** (`Heptachord-0.1.7-win.zip`, SHA-256 steht im
 `CHANGELOG.md`). Quellstand: Branch `release/v0.1.7-stable`.
 
+Der Standalone-Ladedialog für externe VST3-Instrumente startet im zuletzt
+genutzten Ordner (im Benutzer-App-Datenverzeichnis gemerkt) bzw. im
+Standardpfad `Common Files\VST3`; man kann aber beliebig navigieren.
+
 - `VST3/Heptachord.vst3` — in den VST3-Ordner der DAW kopieren
   (z. B. `C:\Program Files\Common Files\VST3`), dann einmal scannen lassen.
 - `Standalone/Heptachord.exe` — direkt startbar, keine Extra-DLLs nötig.

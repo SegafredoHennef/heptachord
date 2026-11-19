@@ -15,8 +15,10 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
   Geprueft (Kanal-Probe, Peak ueber alle Ausgangskanaele): **DX7 V und OB-Xd 3
   spielen auf allen vier Kanaelen** (Peaks 0.37/0.23/0.13/0.12 bzw.
   0.19/0.19/0.18/0.18) — kein Host-Problem. **Analog Lab 3 bleibt auch mit
-  geoeffnetem Editor und Programmwechsel 0 stumm** (0.0000) — pluginseitig,
-  vermutlich kein Default-Patch; gleicher Befund wie bei Osirus.
+  geoeffnetem Editor und Programmwechsel 0/1/2/10/50 stumm** (0.0000) —
+  pluginseitig, kein Default-Patch. Diagnose: `getNumPrograms() = 0`, d. h.
+  weder JUCE-Programm-API noch MIDI-Programmwechsel koennen ein Patch setzen;
+  Patch muss im Plugin-Editor gewaehlt werden (Entscheidung 101).
 - [ ] Effekt-VSTs (ValhallaSupermassive, Wider, Inner Pitch, LANDR Mastering/Stems, Fracture)
   bringen als Instrument keinen Sound — erwartet; nur relevant, wenn Effekt-Support gewuenscht
 - [ ] Reason Rack Plugin.vst3: Blocklist entfernen, sobald ein Hersteller-Update den pluginseitigen
