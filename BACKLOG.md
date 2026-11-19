@@ -12,9 +12,21 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 - [ ] Noten-Export testen (MIDI + Text/CSV)
 - [ ] Debug-Logging (dbg_audio.txt) vor Release entfernen — InstrumentHost.cpp + PluginEditor.cpp (Auto-Test-Log)
 - [ ] VITAL-Editor-Fenster: Groesse/Position merken, ggf. Schliessen-Button-Feedback
+- [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): problemfaellige Plugins klären — Crashes 0xC0000005
+  pluginseitig (Osirus, OsTIrus, Vavra, Xenia, NodalRed2x, Reason Rack, FabFilter Pro-Q 4),
+  HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
+  kein Sound trotz Instrument: DX7 V, Analog Lab 3, SongEngine, OB-Xd 3 (evtl. kein Default-Patch
+  oder zu lange Ladezeit — Auto-Test-Timing pruefen)
+- [ ] Effekt-VSTs (ValhallaSupermassive, Wider, Inner Pitch, LANDR Mastering/Stems, Fracture)
+  bringen als Instrument keinen Sound — erwartet; nur relevant, wenn Effekt-Support gewuenscht
 
 ## Erledigt
 
+- [x] VST-Durchprobierung aller 39 VST3 im System (tools/test_all_vsts.ps1) — 15 klingen,
+      7 pluginseitige Crashes, 1 HANG, 1 LOAD_FAIL, Rest sauber ohne Sound (Effekte/MIDI-Tools erwartet)
+- [x] Surge XT nachgetestet (Pfad "Surge Synth Team") — klingt (peak 0.337), alles OK
+- [x] Instrument-Wechsel VST <-> interner Synth (ComboBox) + VST-Editor zweites Mal oeffnen
+- [x] 5 Welthit-MIDIs + README/DOCX in midi-progressions-20251006/5-Welthits/
 - [x] VST3-Loading mit VITAL getestet — klingt (peakAfter ~0.53, Auto-Test)
 - [x] VST3 Ausgabe-Bus-Fix (outCh=0, nicht kDefaultActive) + echte Device-Rate beim Instrument-Wechsel
 - [x] Auto-Test-Modus HEPTACHORD_AUTO_VST (laedt VST3, spielt Note, beendet sich)
