@@ -6,7 +6,9 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 - [ ] "Skala zwei mal auswaehlbar" — klaeren, welche ComboBox entfernt werden soll
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
-- [ ] main-Branch bereinigen (v0.1.5/v0.1.6-Features die crashen entfernen)
+- [x] main-Branch bereinigt: lokales `main` auf den stabilen Stand
+      (Final-Commit `66abbe4`) gesetzt; alter crashender Stand ist weg,
+      `origin/main` bewusst unveraendert
 - [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
   kein Sound trotz Instrument: DX7 V, Analog Lab 3, SongEngine, OB-Xd 3 (evtl. kein Default-Patch
