@@ -84,6 +84,7 @@ target_compile_definitions(heptachord PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
+    JUCE_PLUGINHOST_VST3=1
 )
 
 # --- Tests ------------------------------------------------------------------
@@ -132,6 +133,7 @@ target_link_libraries(heptachord_tests PRIVATE
 target_compile_definitions(heptachord_tests PRIVATE
     HEPTACHORD_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     HEPTACHORD_PRESETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/presets"
+    JUCE_PLUGINHOST_VST3=1
 )
 
 # Factory-Presets in den Build-Ordner kopieren, damit der Editor sie laden kann.

@@ -61,6 +61,8 @@ public:
 
     bool load (const juce::File& file);
     void unload();
+    int formatCount() const { return m_formatManager ? m_formatManager->getNumFormats() : 0; }
+    juce::String formatNames() const;
 
     bool hasEditor() const override;
     void showEditor (juce::Component* parent) override;
