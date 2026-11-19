@@ -9,8 +9,6 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 - [ ] "Skala zwei mal auswaehlbar" — klaeren, welche ComboBox entfernt werden soll
 - [ ] Richtung aus oberster Zeile entfernen (Position klaeren)
 - [ ] main-Branch bereinigen (v0.1.5/v0.1.6-Features die crashen entfernen)
-- [x] NOTEN-Export (MIDI + Text): ein Speichern-Dialog fuer beide Dateien,
-      Text mit konsistenter Step-Spalte (1-basiert, Off gehoert zum On), Tests in test_midirender.cpp
 - [ ] VITAL-Editor-Fenster: Groesse/Position merken, ggf. Schliessen-Button-Feedback
 - [ ] VST-Durchprobierung (tools/test_all_vsts.ps1): verbleibende problemfaellige Plugins klaeren —
   HANG "Saturation Knob" (Editor/Lizenz-Dialog?), LOAD_FAIL "LANDR Samples",
@@ -23,6 +21,8 @@ Offene Aufgaben und Ideen. Entscheidungen stehen in `docs/entscheidungen.md`.
 
 ## Erledigt
 
+- [x] NOTEN-Export (MIDI + Text): ein Speichern-Dialog fuer beide Dateien,
+      Text mit konsistenter Step-Spalte (1-basiert, Off gehoert zum On), Tests in test_midirender.cpp
 - [x] Aufnahme ueber mehrere Zyklen als Take: slotbasierte Zykluszaehlung,
       Zielwahl 1/2/4/8/unbegrenzt, Live-Anzeige Zyklus/Step, eigener
       SPEICHERN-Knopf (alle Zyklen, Tick 0, Abschluss-Offs), PLAY isoliert;
